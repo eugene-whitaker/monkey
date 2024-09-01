@@ -16,17 +16,17 @@ func TestString(t *testing.T) {
 					&LetStatement{
 						Token: token.Token{Type: token.LET, Literal: "let"},
 						Name: &Identifier{
-							Token: token.Token{Type: token.IDENT, Literal: "myVar"},
-							Value: "myVar",
+							Token: token.Token{Type: token.IDENT, Literal: "x"},
+							Value: "x",
 						},
 						Value: &Identifier{
-							Token: token.Token{Type: token.IDENT, Literal: "anotherVar"},
-							Value: "anotherVar",
+							Token: token.Token{Type: token.IDENT, Literal: "y"},
+							Value: "y",
 						},
 					},
 				},
 			},
-			"let myVar = anotherVar;",
+			"let x = y;",
 		},
 	}
 

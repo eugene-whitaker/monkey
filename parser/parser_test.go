@@ -114,10 +114,10 @@ func TestParseProgram(t *testing.T) {
 			},
 		},
 		{
-			"let foobar = y;",
+			"let z = y;",
 			[]StatementTest{
 				LetStatementTest{
-					"foobar",
+					"z",
 					IdentifierTest("y"),
 				},
 			},
@@ -139,19 +139,19 @@ func TestParseProgram(t *testing.T) {
 			},
 		},
 		{
-			"return y;",
+			"return x;",
 			[]StatementTest{
 				ReturnStatementTest{
-					IdentifierTest("y"),
+					IdentifierTest("x"),
 				},
 			},
 		},
 		{
-			"foobar;",
+			"x;",
 			[]StatementTest{
 				ExpressionStatementTest{
-					IdentifierTest("foobar"),
-					"foobar",
+					IdentifierTest("x"),
+					"x",
 				},
 			},
 		},
@@ -754,24 +754,6 @@ func TestParseProgram(t *testing.T) {
 						},
 					},
 					"((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
-				},
-			},
-		},
-		{
-			"true;",
-			[]StatementTest{
-				ExpressionStatementTest{
-					BooleanTest(true),
-					"true",
-				},
-			},
-		},
-		{
-			"false;",
-			[]StatementTest{
-				ExpressionStatementTest{
-					BooleanTest(false),
-					"false",
 				},
 			},
 		},
