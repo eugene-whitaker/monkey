@@ -32,8 +32,8 @@ func TestString(t *testing.T) {
 
 	for _, tt := range tests {
 		actual := tt.program.String()
-		if actual != tt.expected {
-			t.Errorf("program.String() wrong. expected=%q, actual=%q", tt.expected, actual)
+		if tt.expected != actual {
+			t.Errorf("program.String() ==> expected: %q actual: %q", tt.expected, actual)
 		}
 	}
 }
