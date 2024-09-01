@@ -12,7 +12,7 @@ type StatementTest interface {
 }
 
 type LetStatementTest struct {
-	expectedName string
+	name string
 }
 
 func (lst LetStatementTest) statement() {}
@@ -22,8 +22,8 @@ type ReturnStatementTest struct{}
 func (rst ReturnStatementTest) statement() {}
 
 type ExpressionStatementTest struct {
-	test               ExpressionTest
-	expectedPrecedence string
+	test       ExpressionTest
+	precedence string
 }
 
 func (est ExpressionStatementTest) statement() {}
@@ -72,6 +72,13 @@ type IfExpressionTest struct {
 }
 
 func (ifet IfExpressionTest) expression() {}
+
+type FunctionLiteralTest struct {
+	parameters []string
+	body       *BlockStatementTest
+}
+
+func (flt FunctionLiteralTest) expression() {}
 
 func TestParseProgram(t *testing.T) {
 	tests := []struct {
@@ -386,6 +393,80 @@ func TestParseProgram(t *testing.T) {
 						},
 					},
 					"if (x < y) x else y",
+				},
+			},
+		},
+		{
+			"fn(x, y) { x + y; };",
+			[]StatementTest{
+				ExpressionStatementTest{
+					FunctionLiteralTest{
+						[]string{
+							"x",
+							"y",
+						},
+						&BlockStatementTest{
+							[]StatementTest{
+								ExpressionStatementTest{
+									InfixExpressionTest{
+										IdentifierTest("x"),
+										"+",
+										IdentifierTest("y"),
+									},
+									"(x + y)",
+								},
+							},
+						},
+					},
+					"fn(x, y)(x + y)",
+				},
+			},
+		},
+		{
+			"fn() {};",
+			[]StatementTest{
+				ExpressionStatementTest{
+					FunctionLiteralTest{
+						[]string{},
+						&BlockStatementTest{
+							[]StatementTest{},
+						},
+					},
+					"fn()",
+				},
+			},
+		},
+		{
+			"fn(x) {};",
+			[]StatementTest{
+				ExpressionStatementTest{
+					FunctionLiteralTest{
+						[]string{
+							"x",
+						},
+						&BlockStatementTest{
+							[]StatementTest{},
+						},
+					},
+					"fn(x)",
+				},
+			},
+		},
+		{
+			"fn(x, y, z) {};",
+			[]StatementTest{
+				ExpressionStatementTest{
+					FunctionLiteralTest{
+						[]string{
+							"x",
+							"y",
+							"z",
+						},
+						&BlockStatementTest{
+							[]StatementTest{},
+						},
+					},
+					"fn(x, y, z)",
 				},
 			},
 		},
@@ -883,13 +964,13 @@ func testBlockStatement(t *testing.T, stmt ast.Statement, tests []StatementTest)
 func testStatement(t *testing.T, stmt ast.Statement, test StatementTest) bool {
 	switch tt := test.(type) {
 	case LetStatementTest:
-		return testLetStatement(t, stmt, tt.expectedName)
+		return testLetStatement(t, stmt, tt.name)
 	case ReturnStatementTest:
 		return testReturnStatement(t, stmt)
 	case ExpressionStatementTest:
 		actual := stmt.String()
-		if actual != tt.expectedPrecedence {
-			t.Errorf("expected=%q, got=%q", tt.expectedPrecedence, actual)
+		if actual != tt.precedence {
+			t.Errorf("expected=%q, got=%q", tt.precedence, actual)
 			return false
 		}
 		return testExpressionStatement(t, stmt, tt.test)
@@ -1031,11 +1112,41 @@ func testIfExpression(t *testing.T, exp ast.Expression, condition ExpressionTest
 		return false
 	}
 
-	if !testStatement(t, ifExp.Consequence, consequence) {
+	if !testBlockStatement(t, ifExp.Consequence, consequence.tests) {
 		return false
 	}
 
-	if alternative != nil && !testStatement(t, ifExp.Alternative, alternative) {
+	if alternative != nil && !testBlockStatement(t, ifExp.Alternative, alternative.tests) {
+		return false
+	}
+
+	return true
+}
+
+func testFunctionLiteral(t *testing.T, exp ast.Expression, parameters []string, body *BlockStatementTest) bool {
+	if exp.TokenLiteral() != "fn" {
+		t.Errorf("exp.TokenLiteral() not 'fn'. got=%q", exp.TokenLiteral())
+		return false
+	}
+
+	fnExp, ok := exp.(*ast.FunctionLiteral)
+	if !ok {
+		t.Errorf("exp not *ast.FunctionLiteral. got=%T(%s)", exp, exp)
+		return false
+	}
+
+	if len(fnExp.Parameters) != len(parameters) {
+		t.Errorf("fnExp.Parameters does not contain %d statements. got=%d", len(parameters), len(fnExp.Parameters))
+		return false
+	}
+
+	for i, p := range fnExp.Parameters {
+		if !testIdentifier(t, p, parameters[i]) {
+			return false
+		}
+	}
+
+	if !testBlockStatement(t, fnExp.Body, body.tests) {
 		return false
 	}
 
@@ -1052,6 +1163,8 @@ func testExpression(t *testing.T, exp ast.Expression, test ExpressionTest) bool 
 		return testInfixExpression(t, exp, tt.leftValue, tt.operator, tt.rightValue)
 	case IfExpressionTest:
 		return testIfExpression(t, exp, tt.condition, tt.consequence, tt.alternative)
+	case FunctionLiteralTest:
+		return testFunctionLiteral(t, exp, tt.parameters, tt.body)
 	}
 	t.Errorf("type of test not handled. got=%T", test)
 	return false
