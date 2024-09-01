@@ -22,7 +22,6 @@ func (l *Lexer) NextToken() token.Token {
 
 	switch l.ch {
 	case '=':
-		// TODO(treyvon): can be refactored into method
 		if l.peekChar() == '=' {
 			ch := l.ch
 			l.readChar()
@@ -85,7 +84,6 @@ func (l *Lexer) NextToken() token.Token {
 	return tok
 }
 
-// TODO(treyvon): refactor to support UTF-8
 func (l *Lexer) readChar() {
 	if l.readPosition >= len(l.input) {
 		l.ch = 0
@@ -118,8 +116,6 @@ func isLetter(ch byte) bool {
 	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
 }
 
-// TODO(treyvon): can be simplified
-// TODO(treyvon): refactor to support hex, octal, and binary notation
 func (l *Lexer) readNumber() string {
 	position := l.position
 	for isDigit(l.ch) {

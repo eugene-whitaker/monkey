@@ -12,12 +12,15 @@ type StatementTest interface {
 }
 
 type LetStatementTest struct {
-	name string
+	name  string
+	value ExpressionTest
 }
 
 func (lst LetStatementTest) statement() {}
 
-type ReturnStatementTest struct{}
+type ReturnStatementTest struct {
+	returnValue ExpressionTest
+}
 
 func (rst ReturnStatementTest) statement() {}
 
@@ -97,41 +100,50 @@ func TestParseProgram(t *testing.T) {
 			[]StatementTest{
 				LetStatementTest{
 					"x",
+					IntegerLiteralTest(5),
 				},
 			},
 		},
 		{
-			"let y = 10;",
+			"let y = true;",
 			[]StatementTest{
 				LetStatementTest{
 					"y",
+					BooleanTest(true),
 				},
 			},
 		},
 		{
-			"let foobar = 838383;",
+			"let foobar = y;",
 			[]StatementTest{
 				LetStatementTest{
 					"foobar",
+					IdentifierTest("y"),
 				},
 			},
 		},
 		{
 			"return 5;",
 			[]StatementTest{
-				ReturnStatementTest{},
+				ReturnStatementTest{
+					IntegerLiteralTest(5),
+				},
 			},
 		},
 		{
-			"return 10;",
+			"return true;",
 			[]StatementTest{
-				ReturnStatementTest{},
+				ReturnStatementTest{
+					BooleanTest(true),
+				},
 			},
 		},
 		{
-			"return 993322;",
+			"return y;",
 			[]StatementTest{
-				ReturnStatementTest{},
+				ReturnStatementTest{
+					IdentifierTest("y"),
+				},
 			},
 		},
 		{
@@ -1015,7 +1027,7 @@ func testProgram(t *testing.T, input string, tests []StatementTest) bool {
 	return true
 }
 
-func testLetStatement(t *testing.T, stmt ast.Statement, name string) bool {
+func testLetStatement(t *testing.T, stmt ast.Statement, name string, value ExpressionTest) bool {
 	if "let" != stmt.TokenLiteral() {
 		t.Errorf("stmt.TokenLiteral() ==> expected: 'let' actual: %q", stmt.TokenLiteral())
 		return false
@@ -1031,18 +1043,26 @@ func testLetStatement(t *testing.T, stmt ast.Statement, name string) bool {
 		return false
 	}
 
+	if !testExpression(t, letStmt.Value, value) {
+		return false
+	}
+
 	return true
 }
 
-func testReturnStatement(t *testing.T, stmt ast.Statement) bool {
+func testReturnStatement(t *testing.T, stmt ast.Statement, returnValue ExpressionTest) bool {
 	if "return" != stmt.TokenLiteral() {
 		t.Errorf("stmt.TokenLiteral() ==> expected: 'return' actual: %q", stmt.TokenLiteral())
 		return false
 	}
 
-	_, ok := stmt.(*ast.ReturnStatement)
+	returnStmt, ok := stmt.(*ast.ReturnStatement)
 	if !ok {
 		t.Errorf("stmt ==> unexpected type. expected: %T actual: %T", &ast.ReturnStatement{}, stmt)
+		return false
+	}
+
+	if !testExpression(t, returnStmt.ReturnValue, returnValue) {
 		return false
 	}
 
@@ -1092,9 +1112,9 @@ func testBlockStatement(t *testing.T, stmt ast.Statement, tests []StatementTest)
 func testStatement(t *testing.T, stmt ast.Statement, test StatementTest) bool {
 	switch tt := test.(type) {
 	case LetStatementTest:
-		return testLetStatement(t, stmt, tt.name)
+		return testLetStatement(t, stmt, tt.name, tt.value)
 	case ReturnStatementTest:
-		return testReturnStatement(t, stmt)
+		return testReturnStatement(t, stmt, tt.returnValue)
 	case ExpressionStatementTest:
 		actual := stmt.String()
 		if tt.precedence != actual {
