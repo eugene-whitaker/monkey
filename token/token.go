@@ -2,7 +2,7 @@ package token
 
 const (
 	ILLEGAL = "ILLEGAL"
-	EOF     = "EOF"
+	EOF     = ""
 
 	// Identifiers + literals
 	IDENT = "IDENT" // add, foobar, x, y, ...
@@ -44,8 +44,10 @@ const (
 type TokenType string
 
 type Token struct {
-	Type    TokenType
-	Literal string
+	Type   TokenType
+	Lexeme string
+	Offset int
+	Length int
 }
 
 var keywords = map[string]TokenType{

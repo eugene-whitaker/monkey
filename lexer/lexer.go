@@ -3,21 +3,20 @@ package lexer
 import "monkey/token"
 
 type Lexer struct {
-	input   string
+	input string
+	ch    byte
+
 	start   int
 	current int
-
-	ch byte
 }
 
 func New(input string) *Lexer {
-	l := &Lexer{
+	return &Lexer{
 		input:   input,
+		ch:      0,
 		start:   0,
 		current: 0,
 	}
-	l.ch = l.peek()
-	return l
 }
 
 func (l *Lexer) NextToken() token.Token {
@@ -26,53 +25,87 @@ func (l *Lexer) NextToken() token.Token {
 	for l.ch != 0 {
 		switch l.ch {
 		case '=':
-			return l.emitTwoCharToken('=', token.EQ, token.ASSIGN)
+			if l.match('=') {
+				return token.Token{
+					Type:   token.EQ,
+					Lexeme: l.input[l.start:l.current],
+					Offset: l.start,
+					Length: l.current - l.start,
+				}
+			} else {
+				return l.emit(token.ASSIGN)
+			}
 		case '+':
-			return l.emitOneCharToken(token.PLUS)
+			return l.emit(token.PLUS)
 		case '-':
-			return l.emitOneCharToken(token.MINUS)
+			return l.emit(token.MINUS)
 		case '!':
-			return l.emitTwoCharToken('=', token.NOT_EQ, token.BANG)
+			if l.match('=') {
+				return token.Token{
+					Type:   token.NOT_EQ,
+					Lexeme: l.input[l.start:l.current],
+					Offset: l.start,
+					Length: l.current - l.start,
+				}
+			} else {
+				return l.emit(token.BANG)
+			}
 		case '/':
-			return l.emitOneCharToken(token.SLASH)
+			return l.emit(token.SLASH)
 		case '*':
-			return l.emitOneCharToken(token.ASTERISK)
+			return l.emit(token.ASTERISK)
 		case '<':
-			return l.emitOneCharToken(token.LT)
+			return l.emit(token.LT)
 		case '>':
-			return l.emitOneCharToken(token.GT)
+			return l.emit(token.GT)
 		case ';':
-			return l.emitOneCharToken(token.SEMICOLON)
+			return l.emit(token.SEMICOLON)
 		case ',':
-			return l.emitOneCharToken(token.COMMA)
+			return l.emit(token.COMMA)
 		case '(':
-			return l.emitOneCharToken(token.LPAREN)
+			return l.emit(token.LPAREN)
 		case ')':
-			return l.emitOneCharToken(token.RPAREN)
+			return l.emit(token.RPAREN)
 		case '{':
-			return l.emitOneCharToken(token.LBRACE)
+			return l.emit(token.LBRACE)
 		case '}':
-			return l.emitOneCharToken(token.RBRACE)
-		case ' ', '\t', '\r':
-		case '\n':
+			return l.emit(token.RBRACE)
+		case ' ', '\t', '\r', '\n':
 		default:
 			if isLetter(l.ch) {
-				literal := l.lexeme(isLetter)
+				literal := l.identifier()
 				return token.Token{
-					Type:    token.LookupKeyword(literal),
-					Literal: literal,
+					Type:   token.LookupKeyword(literal),
+					Lexeme: literal,
+					Offset: l.start,
+					Length: l.current - l.start,
 				}
 			} else if isDigit(l.ch) {
-				return token.Token{Type: token.INT, Literal: l.lexeme(isDigit)}
+				literal := l.number()
+				return token.Token{
+					Type:   token.INT,
+					Lexeme: literal,
+					Offset: l.start,
+					Length: l.current - l.start,
+				}
 			} else {
-				return l.emitOneCharToken(token.ILLEGAL)
+				return l.emit(token.ILLEGAL)
 			}
 		}
 
 		l.advance()
 	}
 
-	return token.Token{Type: token.EOF, Literal: ""}
+	return token.Token{
+		Type:   token.EOF,
+		Lexeme: "",
+		Offset: l.start,
+		Length: 0,
+	}
+}
+
+func (l *Lexer) Input() string {
+	return l.input
 }
 
 func (l *Lexer) advance() {
@@ -114,22 +147,26 @@ func (l *Lexer) match(expected byte) bool {
 	return true
 }
 
-func (l *Lexer) lexeme(condition func(byte) bool) string {
-	for condition(l.peek()) {
+func (l *Lexer) identifier() string {
+	for isLetter(l.peek()) {
 		l.consume()
 	}
 	return l.input[l.start:l.current]
 }
 
-func (l *Lexer) emitOneCharToken(tokenType token.TokenType) token.Token {
-	return token.Token{Type: tokenType, Literal: string(l.ch)}
+func (l *Lexer) number() string {
+	for isDigit(l.peek()) {
+		l.consume()
+	}
+	return l.input[l.start:l.current]
 }
 
-func (l *Lexer) emitTwoCharToken(match byte, matched, mismatched token.TokenType) token.Token {
-	if l.match(match) {
-		return token.Token{Type: matched, Literal: l.input[l.start:l.current]}
-	} else {
-		return l.emitOneCharToken(mismatched)
+func (l *Lexer) emit(ttype token.TokenType) token.Token {
+	return token.Token{
+		Type:   ttype,
+		Lexeme: string(l.ch),
+		Offset: l.start,
+		Length: 1,
 	}
 }
 

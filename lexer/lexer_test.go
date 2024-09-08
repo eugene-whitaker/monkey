@@ -249,8 +249,8 @@ func TestNextToken(t *testing.T) {
 				t.Fatalf("tests[%d][%d] ==> expected: %q actual: %q", i, j, expected.expectedType, actual.Type)
 			}
 
-			if expected.expectedLiteral != actual.Literal {
-				t.Fatalf("tests[%d][%d] ==> expected: %q actual: %q", i, j, expected.expectedLiteral, actual.Literal)
+			if expected.expectedLiteral != actual.Lexeme {
+				t.Fatalf("tests[%d][%d] ==> expected: %q actual: %q", i, j, expected.expectedLiteral, actual.Lexeme)
 			}
 		}
 	}

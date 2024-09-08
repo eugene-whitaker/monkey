@@ -51,13 +51,14 @@ type LetStatement struct {
 
 func (ls *LetStatement) statementNode() {}
 func (ls *LetStatement) TokenLiteral() string {
-	return ls.Token.Literal
+	return ls.Token.Lexeme
 }
 
 func (ls *LetStatement) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(ls.TokenLiteral() + " ")
+	out.WriteString(ls.TokenLiteral())
+	out.WriteString(" ")
 	out.WriteString(ls.Name.String())
 	out.WriteString(" = ")
 
@@ -77,13 +78,14 @@ type ReturnStatement struct {
 
 func (rs *ReturnStatement) statementNode() {}
 func (rs *ReturnStatement) TokenLiteral() string {
-	return rs.Token.Literal
+	return rs.Token.Lexeme
 }
 
 func (rs *ReturnStatement) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(rs.TokenLiteral() + " ")
+	out.WriteString(rs.TokenLiteral())
+	out.WriteString(" ")
 
 	if rs.ReturnValue != nil {
 		out.WriteString(rs.ReturnValue.String())
@@ -101,14 +103,11 @@ type ExpressionStatement struct {
 
 func (es *ExpressionStatement) statementNode() {}
 func (es *ExpressionStatement) TokenLiteral() string {
-	return es.Token.Literal
+	return es.Token.Lexeme
 }
 
 func (es *ExpressionStatement) String() string {
-	if es.Expression != nil {
-		return es.Expression.String()
-	}
-	return ""
+	return es.Expression.String()
 }
 
 type BlockStatement struct {
@@ -118,7 +117,7 @@ type BlockStatement struct {
 
 func (bs *BlockStatement) statementNode() {}
 func (bs *BlockStatement) TokenLiteral() string {
-	return bs.Token.Literal
+	return bs.Token.Lexeme
 }
 
 func (bs *BlockStatement) String() string {
@@ -138,7 +137,7 @@ type Identifier struct {
 
 func (i *Identifier) expressionNode() {}
 func (i *Identifier) TokenLiteral() string {
-	return i.Token.Literal
+	return i.Token.Lexeme
 }
 
 func (i *Identifier) String() string {
@@ -152,11 +151,11 @@ type IntegerLiteral struct {
 
 func (il *IntegerLiteral) expressionNode() {}
 func (il *IntegerLiteral) TokenLiteral() string {
-	return il.Token.Literal
+	return il.Token.Lexeme
 }
 
 func (il *IntegerLiteral) String() string {
-	return il.Token.Literal
+	return il.Token.Lexeme
 }
 
 type Boolean struct {
@@ -166,11 +165,11 @@ type Boolean struct {
 
 func (b *Boolean) expressionNode() {}
 func (b *Boolean) TokenLiteral() string {
-	return b.Token.Literal
+	return b.Token.Lexeme
 }
 
 func (b *Boolean) String() string {
-	return b.Token.Literal
+	return b.Token.Lexeme
 }
 
 type PrefixExpression struct {
@@ -181,7 +180,7 @@ type PrefixExpression struct {
 
 func (pe *PrefixExpression) expressionNode() {}
 func (pe *PrefixExpression) TokenLiteral() string {
-	return pe.Token.Literal
+	return pe.Token.Lexeme
 }
 
 func (pe *PrefixExpression) String() string {
@@ -204,7 +203,7 @@ type InfixExpression struct {
 
 func (ie *InfixExpression) expressionNode() {}
 func (ie *InfixExpression) TokenLiteral() string {
-	return ie.Token.Literal
+	return ie.Token.Lexeme
 }
 
 func (ie *InfixExpression) String() string {
@@ -212,7 +211,9 @@ func (ie *InfixExpression) String() string {
 
 	out.WriteString("(")
 	out.WriteString(ie.Left.String())
-	out.WriteString(" " + ie.Operator + " ")
+	out.WriteString(" ")
+	out.WriteString(ie.Operator)
+	out.WriteString(" ")
 	out.WriteString(ie.Right.String())
 	out.WriteString(")")
 
@@ -228,13 +229,14 @@ type IfExpression struct {
 
 func (ie *IfExpression) expressionNode() {}
 func (ie *IfExpression) TokenLiteral() string {
-	return ie.Token.Literal
+	return ie.Token.Lexeme
 }
 
 func (ie *IfExpression) String() string {
 	var out bytes.Buffer
 
-	out.WriteString("if ")
+	out.WriteString(ie.TokenLiteral())
+	out.WriteString(" ")
 	out.WriteString(ie.Condition.String())
 	out.WriteString(" ")
 	out.WriteString(ie.Consequence.String())
@@ -255,7 +257,7 @@ type FunctionLiteral struct {
 
 func (fl *FunctionLiteral) expressionNode() {}
 func (fl *FunctionLiteral) TokenLiteral() string {
-	return fl.Token.Literal
+	return fl.Token.Lexeme
 }
 
 func (fl *FunctionLiteral) String() string {
@@ -283,7 +285,7 @@ type CallExpression struct {
 
 func (ce *CallExpression) expressionNode() {}
 func (ce *CallExpression) TokenLiteral() string {
-	return ce.Token.Literal
+	return ce.Token.Lexeme
 }
 
 func (ce *CallExpression) String() string {

@@ -361,7 +361,7 @@ func TestParseProgram(t *testing.T) {
 			},
 		},
 		{
-			"if (x < y) { x };",
+			"if (x < y) { x; };",
 			[]StatementTest{
 				ExpressionStatementTest{
 					IfExpressionTest{
@@ -385,7 +385,7 @@ func TestParseProgram(t *testing.T) {
 			},
 		},
 		{
-			"if (x < y) { x } else { y };",
+			"if (x < y) { x; } else { y; };",
 			[]StatementTest{
 				ExpressionStatementTest{
 					IfExpressionTest{
@@ -490,11 +490,11 @@ func TestParseProgram(t *testing.T) {
 			},
 		},
 		{
-			"add(1, 2 * 3, 4 + 5)",
+			"call(1, 2 * 3, 4 + 5)",
 			[]StatementTest{
 				ExpressionStatementTest{
 					CallExpressionTest{
-						IdentifierTest("add"),
+						IdentifierTest("call"),
 						[]ExpressionTest{
 							IntegerLiteralTest(1),
 							InfixExpressionTest{
@@ -509,7 +509,7 @@ func TestParseProgram(t *testing.T) {
 							},
 						},
 					},
-					"add(1, (2 * 3), (4 + 5))",
+					"call(1, (2 * 3), (4 + 5))",
 				},
 			},
 		},
@@ -1016,6 +1016,26 @@ func testProgram(t *testing.T, index int, input string, tests []StatementTest) b
 	return true
 }
 
+func testStatement(t *testing.T, index int, stmt ast.Statement, test StatementTest) bool {
+	switch test := test.(type) {
+	case LetStatementTest:
+		return testLetStatement(t, index, stmt, test.name, test.value)
+	case ReturnStatementTest:
+		return testReturnStatement(t, index, stmt, test.returnValue)
+	case ExpressionStatementTest:
+		actual := stmt.String()
+		if test.precedence != actual {
+			t.Errorf("test[%d] - stmt.String() ==> expected: %q actual: %q", index, test.precedence, actual)
+			return false
+		}
+		return testExpressionStatement(t, index, stmt, test.test)
+	case *BlockStatementTest:
+		return testBlockStatement(t, index, stmt, test.tests)
+	}
+	t.Errorf("test[%d] - test ==> unexpected type. actual: %T", index, test)
+	return false
+}
+
 func testLetStatement(t *testing.T, index int, stmt ast.Statement, name string, value ExpressionTest) bool {
 	if "let" != stmt.TokenLiteral() {
 		t.Errorf("test[%d] - stmt.TokenLiteral() ==> expected: 'let' actual: %q", index, stmt.TokenLiteral())
@@ -1098,23 +1118,26 @@ func testBlockStatement(t *testing.T, index int, stmt ast.Statement, tests []Sta
 	return true
 }
 
-func testStatement(t *testing.T, index int, stmt ast.Statement, test StatementTest) bool {
+func testExpression(t *testing.T, index int, exp ast.Expression, test ExpressionTest) bool {
 	switch test := test.(type) {
-	case LetStatementTest:
-		return testLetStatement(t, index, stmt, test.name, test.value)
-	case ReturnStatementTest:
-		return testReturnStatement(t, index, stmt, test.returnValue)
-	case ExpressionStatementTest:
-		actual := stmt.String()
-		if test.precedence != actual {
-			t.Errorf("test[%d] - stmt.String() ==> expected: %q actual: %q", index, test.precedence, actual)
-			return false
-		}
-		return testExpressionStatement(t, index, stmt, test.test)
-	case *BlockStatementTest:
-		return testBlockStatement(t, index, stmt, test.tests)
+	case IdentifierTest:
+		return testIdentifier(t, index, exp, string(test))
+	case IntegerLiteralTest:
+		return testIntegerLiteral(t, index, exp, int64(test))
+	case BooleanTest:
+		return testBoolean(t, index, exp, bool(test))
+	case PrefixExpressionTest:
+		return testPrefixExpression(t, index, exp, test.operator, test.rightValue)
+	case InfixExpressionTest:
+		return testInfixExpression(t, index, exp, test.leftValue, test.operator, test.rightValue)
+	case IfExpressionTest:
+		return testIfExpression(t, index, exp, test.condition, test.consequence, test.alternative)
+	case FunctionLiteralTest:
+		return testFunctionLiteral(t, index, exp, test.parameters, test.body)
+	case CallExpressionTest:
+		return testCallExpression(t, index, exp, test.function, test.arguments)
 	}
-	t.Errorf("test[%d] - test ==> unexpected type. actual: %T", index, test)
+	t.Errorf("test ==> unexpected type. actual: %T", test)
 	return false
 }
 
@@ -1315,27 +1338,4 @@ func testCallExpression(t *testing.T, index int, exp ast.Expression, function Ex
 	}
 
 	return true
-}
-
-func testExpression(t *testing.T, index int, exp ast.Expression, test ExpressionTest) bool {
-	switch test := test.(type) {
-	case IdentifierTest:
-		return testIdentifier(t, index, exp, string(test))
-	case IntegerLiteralTest:
-		return testIntegerLiteral(t, index, exp, int64(test))
-	case BooleanTest:
-		return testBoolean(t, index, exp, bool(test))
-	case PrefixExpressionTest:
-		return testPrefixExpression(t, index, exp, test.operator, test.rightValue)
-	case InfixExpressionTest:
-		return testInfixExpression(t, index, exp, test.leftValue, test.operator, test.rightValue)
-	case IfExpressionTest:
-		return testIfExpression(t, index, exp, test.condition, test.consequence, test.alternative)
-	case FunctionLiteralTest:
-		return testFunctionLiteral(t, index, exp, test.parameters, test.body)
-	case CallExpressionTest:
-		return testCallExpression(t, index, exp, test.function, test.arguments)
-	}
-	t.Errorf("test ==> unexpected type. actual: %T", test)
-	return false
 }
