@@ -37,6 +37,10 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return evalInfixExpression(node, env)
 	case *ast.IfExpression:
 		return evalIfExpression(node, env)
+	case *ast.FunctionLiteral:
+		return evalFunctionLiteral(node, env)
+	case *ast.CallExpression:
+		return evalCallExpression(node, env)
 	}
 
 	return nil
@@ -254,6 +258,53 @@ func evalIfExpression(node *ast.IfExpression, env *object.Environment) object.Ob
 	}
 
 	return NULL
+}
+
+func evalFunctionLiteral(node *ast.FunctionLiteral, env *object.Environment) object.Object {
+	return &object.Function{
+		Parameters: node.Parameters,
+		Body:       node.Body,
+		Env:        env,
+	}
+}
+
+func evalCallExpression(node *ast.CallExpression, env *object.Environment) object.Object {
+	function := Eval(node.Function, env)
+
+	if isError(function) {
+		return function
+	}
+
+	args := []object.Object{}
+
+	for _, arg := range node.Arguements {
+		result := Eval(arg, env)
+
+		if isError(result) {
+			return result
+		}
+
+		args = append(args, result)
+	}
+
+	fn, ok := function.(*object.Function)
+	if !ok {
+		return toErrorObject("unknown call expression type: %s", function.Type())
+	}
+
+	enclosed := object.NewEnclosedEnvironment(fn.Env)
+
+	for i, parameter := range fn.Parameters {
+		enclosed.Set(parameter.Value, args[i])
+	}
+
+	result := Eval(fn.Body, enclosed)
+
+	if returnValue, ok := result.(*object.ReturnValue); ok {
+		return returnValue.Value
+	}
+
+	return result
 }
 
 func toIntegerObject(val int64) object.Object {

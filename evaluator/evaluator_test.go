@@ -23,17 +23,18 @@ type NullTest struct{}
 
 func (nt NullTest) object() {}
 
-type ReturnValueTest struct {
-	test ObjectTest
-}
-
-func (rvt ReturnValueTest) object() {}
-
 type ErrorTest struct {
 	message string
 }
 
 func (et ErrorTest) object() {}
+
+type FunctionTest struct {
+	parameters []string
+	body       string
+}
+
+func (ft FunctionTest) object() {}
 
 func TestEval(t *testing.T) {
 	tests := []struct {
@@ -109,30 +110,6 @@ func TestEval(t *testing.T) {
 			BooleanTest(false),
 		},
 		{
-			"!true;",
-			BooleanTest(false),
-		},
-		{
-			"!false;",
-			BooleanTest(true),
-		},
-		{
-			"!5;",
-			BooleanTest(false),
-		},
-		{
-			"!!true;",
-			BooleanTest(true),
-		},
-		{
-			"!!false;",
-			BooleanTest(false),
-		},
-		{
-			"!!5;",
-			BooleanTest(true),
-		},
-		{
 			"1 < 2;",
 			BooleanTest(true),
 		},
@@ -201,6 +178,30 @@ func TestEval(t *testing.T) {
 			BooleanTest(true),
 		},
 		{
+			"!true;",
+			BooleanTest(false),
+		},
+		{
+			"!false;",
+			BooleanTest(true),
+		},
+		{
+			"!5;",
+			BooleanTest(false),
+		},
+		{
+			"!!true;",
+			BooleanTest(true),
+		},
+		{
+			"!!false;",
+			BooleanTest(false),
+		},
+		{
+			"!!5;",
+			BooleanTest(true),
+		},
+		{
 			"if (true) { 10 };",
 			IntegerTest(10),
 		},
@@ -230,33 +231,35 @@ func TestEval(t *testing.T) {
 		},
 		{
 			"return 10;",
-			ReturnValueTest{
-				IntegerTest(10),
-			},
+			IntegerTest(10),
 		},
 		{
 			"return 10; 9;",
-			ReturnValueTest{
-				IntegerTest(10),
-			},
+			IntegerTest(10),
 		},
 		{
 			"return 2 * 5; 9;",
-			ReturnValueTest{
-				IntegerTest(10),
-			},
+			IntegerTest(10),
 		},
 		{
 			"9; return 2 * 5; 9;",
-			ReturnValueTest{
-				IntegerTest(10),
-			},
+			IntegerTest(10),
+		},
+		{
+			"if (10 > 1) {  return 10; };",
+			IntegerTest(10),
 		},
 		{
 			"if (10 > 1) { if (10 > 1) { return 10; }; return 1; };",
-			ReturnValueTest{
-				IntegerTest(10),
-			},
+			IntegerTest(10),
+		},
+		{
+			"let f = fn(x) { return x; x + 10; }; f(10);",
+			IntegerTest(10),
+		},
+		{
+			"let f = fn(x) { let result = x + 10; return result; return 10; }; f(10);",
+			IntegerTest(20),
 		},
 		{
 			"5 + true;",
@@ -322,6 +325,47 @@ func TestEval(t *testing.T) {
 			"let a = 5; let b = a; let c = a + b + 5; c;",
 			IntegerTest(15),
 		},
+		{
+			"fn(x) { x + 2; };",
+			FunctionTest{
+				[]string{
+					"x",
+				},
+				"(x + 2)",
+			},
+		},
+		{
+			"let identity = fn(x) { x; }; identity(5);",
+			IntegerTest(5),
+		},
+		{
+			"let identity = fn(x) { return x; }; identity(5);",
+			IntegerTest(5),
+		},
+		{
+			"let double = fn(x) { x * 2; }; double(5);",
+			IntegerTest(10),
+		},
+		{
+			"let add = fn(x, y) { x + y; }; add(5, 5);",
+			IntegerTest(10),
+		},
+		{
+			"let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));",
+			IntegerTest(20),
+		},
+		{
+			"fn(x) { x; }(5)",
+			IntegerTest(5),
+		},
+		{
+			"let adder = fn(x) { fn(y) { x + y }; }; let addTwo = adder(2); addTwo(2);",
+			IntegerTest(4),
+		},
+		{
+			"let first = 10; let second = 10; let third = 10; let func = fn(first) { let second = 20; first + second + third; }; func(20) + first + second;",
+			IntegerTest(70),
+		},
 	}
 
 	for i, tt := range tests {
@@ -345,10 +389,10 @@ func testObject(t *testing.T, index int, input string, obj object.Object, test O
 		return testBoolean(t, index, input, obj, bool(test))
 	case NullTest:
 		return testNull(t, index, input, obj)
-	case ReturnValueTest:
-		return testReturnValue(t, index, input, obj, test.test)
 	case ErrorTest:
 		return testError(t, index, input, obj, test.message)
+	case FunctionTest:
+		return testFunction(t, index, input, obj, test.parameters, test.body)
 	}
 	t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", index, input, test)
 	return false
@@ -393,14 +437,6 @@ func testNull(t *testing.T, index int, input string, obj object.Object) bool {
 	return true
 }
 
-func testReturnValue(t *testing.T, index int, input string, obj object.Object, test ObjectTest) bool {
-	if !testObject(t, index, input, obj, test) {
-		return false
-	}
-
-	return true
-}
-
 func testError(t *testing.T, index int, input string, obj object.Object, msg string) bool {
 	result, ok := obj.(*object.Error)
 	if !ok {
@@ -410,6 +446,34 @@ func testError(t *testing.T, index int, input string, obj object.Object, msg str
 
 	if msg != result.Message {
 		t.Errorf("test[%d] - %q - result.Value ==> expected: %q actual: %q", index, input, msg, result.Message)
+		return false
+	}
+
+	return true
+}
+
+func testFunction(t *testing.T, index int, input string, obj object.Object, parameters []string, body string) bool {
+	result, ok := obj.(*object.Function)
+	if !ok {
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Function{}, obj)
+		return false
+	}
+
+	if len(parameters) != len(result.Parameters) {
+		t.Errorf("test[%d] - %q - len(result.Parameters) ==> expected: %d actual: %d", index, input, len(parameters), len(result.Parameters))
+		return false
+	}
+
+	for i, parameter := range result.Parameters {
+		if parameters[i] != parameter.String() {
+			t.Errorf("test[%d] - %q - result.Parameters[%d].String() ==> expected: %q actual: %q", index, input, i, parameters[i], parameter)
+			return false
+		}
+	}
+
+	actual := result.Body.String()
+	if body != actual {
+		t.Errorf("test[%d] - %q - result.Body.String() ==> expected: %q actual: %q", index, input, body, actual)
 		return false
 	}
 
