@@ -23,6 +23,12 @@ type NullTest struct{}
 
 func (nt NullTest) object() {}
 
+type ReturnValueTest struct {
+	test ObjectTest
+}
+
+func (rvt ReturnValueTest) object() {}
+
 func TestEval(t *testing.T) {
 	tests := []struct {
 		input string
@@ -216,6 +222,36 @@ func TestEval(t *testing.T) {
 			"if (1 < 2) { 10 } else { 20 }",
 			IntegerTest(10),
 		},
+		{
+			"return 10;",
+			ReturnValueTest{
+				IntegerTest(10),
+			},
+		},
+		{
+			"return 10; 9;",
+			ReturnValueTest{
+				IntegerTest(10),
+			},
+		},
+		{
+			"return 2 * 5; 9;",
+			ReturnValueTest{
+				IntegerTest(10),
+			},
+		},
+		{
+			"9; return 2 * 5; 9;",
+			ReturnValueTest{
+				IntegerTest(10),
+			},
+		},
+		{
+			"if (10 > 1) { if (10 > 1) { return 10; }; return 1; }",
+			ReturnValueTest{
+				IntegerTest(10),
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -238,6 +274,8 @@ func testObject(t *testing.T, index int, input string, obj object.Object, test O
 		return testBoolean(t, index, input, obj, bool(test))
 	case NullTest:
 		return testNull(t, index, input, obj)
+	case ReturnValueTest:
+		return testReturnValue(t, index, input, obj, test.test)
 	}
 	t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", index, input, test)
 	return false
@@ -251,7 +289,7 @@ func testInteger(t *testing.T, index int, input string, obj object.Object, value
 	}
 
 	if value != result.Value {
-		t.Errorf("test[%d] - %q - result.Value ==> expected: %q actual: %q", index, input, value, result.Value)
+		t.Errorf("test[%d] - %q - result.Value ==> expected: %d actual: %d", index, input, value, result.Value)
 		return false
 	}
 
@@ -276,6 +314,20 @@ func testBoolean(t *testing.T, index int, input string, obj object.Object, value
 func testNull(t *testing.T, index int, input string, obj object.Object) bool {
 	if NULL != obj {
 		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Null{}, obj)
+		return false
+	}
+
+	return true
+}
+
+func testReturnValue(t *testing.T, index int, input string, obj object.Object, test ObjectTest) bool {
+	/*returnValue, ok := obj.(*object.ReturnValue)
+	if !ok {
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.ReturnValue{}, obj)
+		return false
+	}*/
+
+	if !testObject(t, index, input, obj, test) {
 		return false
 	}
 
