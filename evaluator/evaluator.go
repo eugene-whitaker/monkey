@@ -23,6 +23,8 @@ func Eval(node ast.Node) object.Object {
 		return evalBoolean(node)
 	case *ast.PrefixExpression:
 		return evalPrefixExpression(node)
+	case *ast.InfixExpression:
+		return evalInfixExpression(node)
 	}
 
 	return nil
@@ -49,41 +51,127 @@ func evalIntegerLiteral(node *ast.IntegerLiteral) object.Object {
 }
 
 func evalBoolean(node *ast.Boolean) object.Object {
-	if node.Value {
-		return TRUE
-	}
-	return FALSE
+	return toBooleanObject(node.Value)
 }
 
 func evalPrefixExpression(node *ast.PrefixExpression) object.Object {
 	right := Eval(node.Right)
 
-	switch node.Operator {
-	case "!":
-		switch right.Type() {
-		case object.INTEGER_OBJ:
-			if right.(*object.Integer).Value != 0 {
-				return FALSE
-			}
-		case object.BOOLEAN_OBJ:
-			if right == TRUE {
-				return FALSE
-			}
-		case object.NULL_OBJ:
-		default:
-			return NULL
-		}
-		return TRUE
-	case "-":
-		if right.Type() != object.INTEGER_OBJ {
-			return NULL
-		}
+	switch {
+	case right.Type() == object.INTEGER_OBJ:
+		return evalIntegerPrefixExpression(node.Operator, right.(*object.Integer))
+	case right.Type() == object.BOOLEAN_OBJ:
+		return evalBooleanPrefixExpression(node.Operator, right.(*object.Boolean))
+	case right.Type() == object.NULL_OBJ:
+		return evalNullPrefixExpression(node.Operator)
+	default:
+		return NULL
+	}
+}
 
-		value := right.(*object.Integer).Value
+func evalIntegerPrefixExpression(operator string, right *object.Integer) object.Object {
+	switch operator {
+	case "!":
+		return toBooleanObject(right.Value == 0)
+	case "-":
 		return &object.Integer{
-			Value: -value,
+			Value: -right.Value,
 		}
 	default:
 		return NULL
 	}
+}
+
+func evalBooleanPrefixExpression(operator string, right *object.Boolean) object.Object {
+	switch operator {
+	case "!":
+		return toBooleanObject(right == FALSE)
+	default:
+		return NULL
+	}
+}
+
+func evalNullPrefixExpression(operator string) object.Object {
+	switch operator {
+	case "!":
+		return TRUE
+	default:
+		return NULL
+	}
+}
+
+func evalInfixExpression(node *ast.InfixExpression) object.Object {
+	left := Eval(node.Left)
+	right := Eval(node.Right)
+
+	switch {
+	case left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ:
+		return evalIntegerInfixExpression(node.Operator, left.(*object.Integer), right.(*object.Integer))
+	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ:
+		return evalBooleanInfixExpression(node.Operator, left.(*object.Boolean), right.(*object.Boolean))
+	case left.Type() == object.NULL_OBJ && right.Type() == object.NULL_OBJ:
+		return evalNullInfixExpression(node.Operator)
+	default:
+		return NULL
+	}
+}
+
+func evalIntegerInfixExpression(operator string, left, right *object.Integer) object.Object {
+	switch operator {
+	case "+":
+		return &object.Integer{
+			Value: left.Value + right.Value,
+		}
+	case "-":
+		return &object.Integer{
+			Value: left.Value - right.Value,
+		}
+	case "*":
+		return &object.Integer{
+			Value: left.Value * right.Value,
+		}
+	case "/":
+		return &object.Integer{
+			Value: left.Value / right.Value,
+		}
+	case "<":
+		return toBooleanObject(left.Value < right.Value)
+	case ">":
+		return toBooleanObject(left.Value > right.Value)
+	case "==":
+		return toBooleanObject(left.Value == right.Value)
+	case "!=":
+		return toBooleanObject(left.Value != right.Value)
+	default:
+		return NULL
+	}
+}
+
+func evalBooleanInfixExpression(operator string, left, right *object.Boolean) object.Object {
+	switch operator {
+	case "==":
+		return toBooleanObject(left == right)
+	case "!=":
+		return toBooleanObject(left != right)
+	default:
+		return NULL
+	}
+}
+
+func evalNullInfixExpression(operator string) object.Object {
+	switch operator {
+	case "==":
+		return TRUE
+	case "!=":
+		return FALSE
+	default:
+		return NULL
+	}
+}
+
+func toBooleanObject(val bool) object.Object {
+	if val {
+		return TRUE
+	}
+	return FALSE
 }

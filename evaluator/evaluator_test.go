@@ -41,6 +41,50 @@ func TestEval(t *testing.T) {
 			IntegerTest(-10),
 		},
 		{
+			"5 + 5 + 5 + 5 - 10",
+			IntegerTest(10),
+		},
+		{
+			"2 * 2 * 2 * 2 * 2",
+			IntegerTest(32),
+		},
+		{
+			"-50 + 100 + -50",
+			IntegerTest(0),
+		},
+		{
+			"5 * 2 + 10",
+			IntegerTest(20),
+		},
+		{
+			"5 + 2 * 10",
+			IntegerTest(25),
+		},
+		{
+			"20 + 2 * -10",
+			IntegerTest(0),
+		},
+		{
+			"50 / 2 * 2 + 10",
+			IntegerTest(60),
+		},
+		{
+			"2 * (5 + 10)",
+			IntegerTest(30),
+		},
+		{
+			"3 * 3 * 3 + 10",
+			IntegerTest(37),
+		},
+		{
+			"3 * (3 * 3) + 10",
+			IntegerTest(37),
+		},
+		{
+			"(5 + 10 * 2 + 15 / 3) * 2 + -10",
+			IntegerTest(50),
+		},
+		{
 			"true",
 			BooleanTest(true),
 		},
@@ -49,8 +93,76 @@ func TestEval(t *testing.T) {
 			BooleanTest(false),
 		},
 		{
+			"true == true",
+			BooleanTest(true),
+		},
+		{
+			"false == false",
+			BooleanTest(true),
+		},
+		{
+			"true == false",
+			BooleanTest(false),
+		},
+		{
+			"true != false",
+			BooleanTest(true),
+		},
+		{
+			"false != true",
+			BooleanTest(true),
+		},
+		{
+			"(1 < 2) == true",
+			BooleanTest(true),
+		},
+		{
+			"(1 < 2) == false",
+			BooleanTest(false),
+		},
+		{
+			"(1 > 2) == true",
+			BooleanTest(false),
+		},
+		{
+			"(1 > 2) == false",
+			BooleanTest(true),
+		},
+		{
 			"!true",
 			BooleanTest(false),
+		},
+		{
+			"1 < 2",
+			BooleanTest(true),
+		},
+		{
+			"1 > 2",
+			BooleanTest(false),
+		},
+		{
+			"1 < 1",
+			BooleanTest(false),
+		},
+		{
+			"1 > 1",
+			BooleanTest(false),
+		},
+		{
+			"1 == 1",
+			BooleanTest(true),
+		},
+		{
+			"1 != 1",
+			BooleanTest(false),
+		},
+		{
+			"1 == 2",
+			BooleanTest(false),
+		},
+		{
+			"1 != 2",
+			BooleanTest(true),
 		},
 		{
 			"!false",
