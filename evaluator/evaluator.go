@@ -14,54 +14,76 @@ var (
 func Eval(node ast.Node) object.Object {
 	switch node := node.(type) {
 	case *ast.Program:
-		return evalStatements(node.Statements)
+		return evalProgram(node)
 	case *ast.ExpressionStatement:
-		return Eval(node.Expression)
+		return evalExpressionStatement(node)
 	case *ast.IntegerLiteral:
-		return &object.Integer{Value: node.Value}
+		return evalIntegerLiteral(node)
 	case *ast.Boolean:
-		return nativeBoolToBooleanObject(node.Value)
+		return evalBoolean(node)
 	case *ast.PrefixExpression:
-		right := Eval(node.Right)
-		return evalPrefixExpression(node.Operator, right)
+		return evalPrefixExpression(node)
 	}
 
 	return nil
 }
 
-func evalStatements(stmts []ast.Statement) object.Object {
+func evalProgram(node *ast.Program) object.Object {
 	var result object.Object
 
-	for _, stmt := range stmts {
+	for _, stmt := range node.Statements {
 		result = Eval(stmt)
 	}
 
 	return result
 }
 
-func evalPrefixExpression(operator string, right object.Object) object.Object {
-	switch operator {
-	case "!":
-		return evalBangOperatorExpression(right)
-	default:
-		return NULL
+func evalExpressionStatement(node *ast.ExpressionStatement) object.Object {
+	return Eval(node.Expression)
+}
+
+func evalIntegerLiteral(node *ast.IntegerLiteral) object.Object {
+	return &object.Integer{
+		Value: node.Value,
 	}
 }
 
-func evalBangOperatorExpression(right object.Object) object.Object {
-	switch right {
-	case TRUE:
-		return FALSE
-	case FALSE, NULL:
-		return TRUE
-	default:
-		return FALSE
-	}
-}
-
-func nativeBoolToBooleanObject(value bool) *object.Boolean {
-	if value {
+func evalBoolean(node *ast.Boolean) object.Object {
+	if node.Value {
 		return TRUE
 	}
 	return FALSE
+}
+
+func evalPrefixExpression(node *ast.PrefixExpression) object.Object {
+	right := Eval(node.Right)
+
+	switch node.Operator {
+	case "!":
+		switch right.Type() {
+		case object.INTEGER_OBJ:
+			if right.(*object.Integer).Value != 0 {
+				return FALSE
+			}
+		case object.BOOLEAN_OBJ:
+			if right == TRUE {
+				return FALSE
+			}
+		case object.NULL_OBJ:
+		default:
+			return NULL
+		}
+		return TRUE
+	case "-":
+		if right.Type() != object.INTEGER_OBJ {
+			return NULL
+		}
+
+		value := right.(*object.Integer).Value
+		return &object.Integer{
+			Value: -value,
+		}
+	default:
+		return NULL
+	}
 }
