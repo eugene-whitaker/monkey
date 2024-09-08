@@ -991,7 +991,7 @@ func testProgram(t *testing.T, index int, input string, precedence string, tests
 	program := p.ParseProgram()
 
 	if 0 != len(p.Errors()) {
-		t.Errorf("test[%d] - p.Errors() ==> expected: 0 actual: %d", index, len(p.Errors()))
+		t.Errorf("test[%d] - %q - p.Errors() ==> expected: 0 actual: %d", index, input, len(p.Errors()))
 		for i, msg := range p.Errors() {
 			t.Errorf("test[%d] - p.Errors()[%d]: %q", index, i, msg)
 		}
@@ -999,23 +999,23 @@ func testProgram(t *testing.T, index int, input string, precedence string, tests
 	}
 
 	if program == nil {
-		t.Errorf("test[%d] - ParserProgram() ==> expected: not <nil>", index)
+		t.Errorf("test[%d] - %q - ParserProgram() ==> expected: not <nil>", index, input)
 		return false
 	}
 
 	actual := program.String()
 	if precedence != actual {
-		t.Errorf("test[%d] - program.String() ==> expected: %q actual: %q", index, precedence, actual)
+		t.Errorf("test[%d] - %q - program.String() ==> expected: %q actual: %q", index, input, precedence, actual)
 		return false
 	}
 
 	if len(tests) != len(program.Statements) {
-		t.Errorf("test[%d] - len(program.Statements) ==> expected: %d actual: %d", index, len(tests), len(program.Statements))
+		t.Errorf("test[%d] - %q - len(program.Statements) ==> expected: %d actual: %d", index, input, len(tests), len(program.Statements))
 		return false
 	}
 
 	for i, s := range program.Statements {
-		if !testStatement(t, index, s, tests[i]) {
+		if !testStatement(t, index, input, s, tests[i]) {
 			return false
 		}
 	}
@@ -1023,96 +1023,96 @@ func testProgram(t *testing.T, index int, input string, precedence string, tests
 	return true
 }
 
-func testStatement(t *testing.T, index int, stmt ast.Statement, test StatementTest) bool {
+func testStatement(t *testing.T, index int, input string, stmt ast.Statement, test StatementTest) bool {
 	switch test := test.(type) {
 	case LetStatementTest:
-		return testLetStatement(t, index, stmt, test.name, test.value)
+		return testLetStatement(t, index, input, stmt, test.name, test.value)
 	case ReturnStatementTest:
-		return testReturnStatement(t, index, stmt, test.returnValue)
+		return testReturnStatement(t, index, input, stmt, test.returnValue)
 	case ExpressionStatementTest:
-		return testExpressionStatement(t, index, stmt, test.test)
+		return testExpressionStatement(t, index, input, stmt, test.test)
 	case *BlockStatementTest:
-		return testBlockStatement(t, index, stmt, test.tests)
+		return testBlockStatement(t, index, input, stmt, test.tests)
 	}
-	t.Errorf("test[%d] - test ==> unexpected type. actual: %T", index, test)
+	t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", index, input, test)
 	return false
 }
 
-func testLetStatement(t *testing.T, index int, stmt ast.Statement, name string, value ExpressionTest) bool {
+func testLetStatement(t *testing.T, index int, input string, stmt ast.Statement, name string, value ExpressionTest) bool {
 	if "let" != stmt.TokenLiteral() {
-		t.Errorf("test[%d] - stmt.TokenLiteral() ==> expected: 'let' actual: %q", index, stmt.TokenLiteral())
+		t.Errorf("test[%d] - %q - stmt.TokenLiteral() ==> expected: 'let' actual: %q", index, input, stmt.TokenLiteral())
 		return false
 	}
 
 	letStmt, ok := stmt.(*ast.LetStatement)
 	if !ok {
-		t.Errorf("test[%d] - stmt ==> unexpected type. expected: %T actual: %T", index, &ast.LetStatement{}, stmt)
+		t.Errorf("test[%d] - %q - stmt ==> unexpected type. expected: %T actual: %T", index, input, &ast.LetStatement{}, stmt)
 		return false
 	}
 
-	if !testIdentifier(t, index, letStmt.Name, name) {
+	if !testIdentifier(t, index, input, letStmt.Name, name) {
 		return false
 	}
 
-	if !testExpression(t, index, letStmt.Value, value) {
+	if !testExpression(t, index, input, letStmt.Value, value) {
 		return false
 	}
 
 	return true
 }
 
-func testReturnStatement(t *testing.T, index int, stmt ast.Statement, returnValue ExpressionTest) bool {
+func testReturnStatement(t *testing.T, index int, input string, stmt ast.Statement, returnValue ExpressionTest) bool {
 	if "return" != stmt.TokenLiteral() {
-		t.Errorf("test[%d] - stmt.TokenLiteral() ==> expected: 'return' actual: %q", index, stmt.TokenLiteral())
+		t.Errorf("test[%d] - %q - stmt.TokenLiteral() ==> expected: 'return' actual: %q", index, input, stmt.TokenLiteral())
 		return false
 	}
 
 	returnStmt, ok := stmt.(*ast.ReturnStatement)
 	if !ok {
-		t.Errorf("test[%d] - stmt ==> unexpected type. expected: %T actual: %T", index, &ast.ReturnStatement{}, stmt)
+		t.Errorf("test[%d] - %q - stmt ==> unexpected type. expected: %T actual: %T", index, input, &ast.ReturnStatement{}, stmt)
 		return false
 	}
 
-	if !testExpression(t, index, returnStmt.ReturnValue, returnValue) {
+	if !testExpression(t, index, input, returnStmt.ReturnValue, returnValue) {
 		return false
 	}
 
 	return true
 }
 
-func testExpressionStatement(t *testing.T, index int, stmt ast.Statement, test ExpressionTest) bool {
+func testExpressionStatement(t *testing.T, index int, input string, stmt ast.Statement, test ExpressionTest) bool {
 	expStmt, ok := stmt.(*ast.ExpressionStatement)
 	if !ok {
-		t.Errorf("test[%d] - stmt ==> unexpected type. expected: %T actual: %T", index, &ast.ExpressionStatement{}, stmt)
+		t.Errorf("test[%d] - %q - stmt ==> unexpected type. expected: %T actual: %T", index, input, &ast.ExpressionStatement{}, stmt)
 		return false
 	}
 
-	if !testExpression(t, index, expStmt.Expression, test) {
+	if !testExpression(t, index, input, expStmt.Expression, test) {
 		return false
 	}
 
 	return true
 }
 
-func testBlockStatement(t *testing.T, index int, stmt ast.Statement, tests []StatementTest) bool {
+func testBlockStatement(t *testing.T, index int, input string, stmt ast.Statement, tests []StatementTest) bool {
 	if "{" != stmt.TokenLiteral() {
-		t.Errorf("test[%d] - stmt.TokenLiteral() ==> expected: '{' actual: %q", index, stmt.TokenLiteral())
+		t.Errorf("test[%d] - %q - stmt.TokenLiteral() ==> expected: '{' actual: %q", index, input, stmt.TokenLiteral())
 		return false
 	}
 
 	blockStmt, ok := stmt.(*ast.BlockStatement)
 	if !ok {
-		t.Errorf("test[%d] - stmt ==> unexpected type. expected: %T actual: %T", index, &ast.BlockStatement{}, stmt)
+		t.Errorf("test[%d] - %q - stmt ==> unexpected type. expected: %T actual: %T", index, input, &ast.BlockStatement{}, stmt)
 		return false
 	}
 
 	if len(tests) != len(blockStmt.Statements) {
-		t.Errorf("test[%d] - len(blockStmt.Statements) ==> expected: %d actual: %d", index, len(tests), len(blockStmt.Statements))
+		t.Errorf("test[%d] - %q - len(blockStmt.Statements) ==> expected: %d actual: %d", index, input, len(tests), len(blockStmt.Statements))
 		return false
 	}
 
 	for i, s := range blockStmt.Statements {
-		if !testStatement(t, index, s, tests[i]) {
+		if !testStatement(t, index, input, s, tests[i]) {
 			return false
 		}
 	}
@@ -1120,221 +1120,221 @@ func testBlockStatement(t *testing.T, index int, stmt ast.Statement, tests []Sta
 	return true
 }
 
-func testExpression(t *testing.T, index int, exp ast.Expression, test ExpressionTest) bool {
+func testExpression(t *testing.T, index int, input string, exp ast.Expression, test ExpressionTest) bool {
 	switch test := test.(type) {
 	case IdentifierTest:
-		return testIdentifier(t, index, exp, string(test))
+		return testIdentifier(t, index, input, exp, string(test))
 	case IntegerLiteralTest:
-		return testIntegerLiteral(t, index, exp, int64(test))
+		return testIntegerLiteral(t, index, input, exp, int64(test))
 	case BooleanTest:
-		return testBoolean(t, index, exp, bool(test))
+		return testBoolean(t, index, input, exp, bool(test))
 	case PrefixExpressionTest:
-		return testPrefixExpression(t, index, exp, test.operator, test.rightValue)
+		return testPrefixExpression(t, index, input, exp, test.operator, test.rightValue)
 	case InfixExpressionTest:
-		return testInfixExpression(t, index, exp, test.leftValue, test.operator, test.rightValue)
+		return testInfixExpression(t, index, input, exp, test.leftValue, test.operator, test.rightValue)
 	case IfExpressionTest:
-		return testIfExpression(t, index, exp, test.condition, test.consequence, test.alternative)
+		return testIfExpression(t, index, input, exp, test.condition, test.consequence, test.alternative)
 	case FunctionLiteralTest:
-		return testFunctionLiteral(t, index, exp, test.parameters, test.body)
+		return testFunctionLiteral(t, index, input, exp, test.parameters, test.body)
 	case CallExpressionTest:
-		return testCallExpression(t, index, exp, test.function, test.arguments)
+		return testCallExpression(t, index, input, exp, test.function, test.arguments)
 	}
-	t.Errorf("test ==> unexpected type. actual: %T", test)
+	t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", index, input, test)
 	return false
 }
 
-func testIdentifier(t *testing.T, index int, exp ast.Expression, value string) bool {
+func testIdentifier(t *testing.T, index int, input string, exp ast.Expression, value string) bool {
 	ident, ok := exp.(*ast.Identifier)
 	if !ok {
-		t.Errorf("test[%d] - exp ==> unexpected type. expected: %T actual: %T", index, &ast.Identifier{}, exp)
+		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", index, input, &ast.Identifier{}, exp)
 		return false
 	}
 
 	if value != ident.Value {
-		t.Errorf("test[%d] - ident.Value ==> expected: %q actual: %q", index, value, ident.Value)
+		t.Errorf("test[%d] - %q - ident.Value ==> expected: %q actual: %q", index, input, value, ident.Value)
 		return false
 	}
 
 	if value != ident.TokenLiteral() {
-		t.Errorf("test[%d] - ident.TokenLiteral() ==> expected: %q actual: %q", index, value, ident.TokenLiteral())
+		t.Errorf("test[%d] - %q - ident.TokenLiteral() ==> expected: %q actual: %q", index, input, value, ident.TokenLiteral())
 		return false
 	}
 
 	return true
 }
 
-func testIntegerLiteral(t *testing.T, index int, exp ast.Expression, value int64) bool {
+func testIntegerLiteral(t *testing.T, index int, input string, exp ast.Expression, value int64) bool {
 	integ, ok := exp.(*ast.IntegerLiteral)
 	if !ok {
-		t.Errorf("test[%d] - exp ==> unexpected type. expected: %T actual: %T", index, &ast.IntegerLiteral{}, exp)
+		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", index, input, &ast.IntegerLiteral{}, exp)
 		return false
 	}
 
 	if value != integ.Value {
-		t.Errorf("test[%d] - integ.Value ==> expected: %d actual: %d", index, value, integ.Value)
+		t.Errorf("test[%d] - %q - integ.Value ==> expected: %d actual: %d", index, input, value, integ.Value)
 		return false
 	}
 
 	if fmt.Sprintf("%d", value) != integ.TokenLiteral() {
-		t.Errorf("test[%d] - integ.TokenLiteral() ==> expected: %d actual: %q", index, value, integ.TokenLiteral())
+		t.Errorf("test[%d] - %q - integ.TokenLiteral() ==> expected: %d actual: %q", index, input, value, integ.TokenLiteral())
 		return false
 	}
 
 	return true
 }
 
-func testBoolean(t *testing.T, index int, exp ast.Expression, value bool) bool {
+func testBoolean(t *testing.T, index int, input string, exp ast.Expression, value bool) bool {
 	boolean, ok := exp.(*ast.Boolean)
 	if !ok {
-		t.Errorf("test[%d] - exp ==> unexpected type. expected: %T actual: %T", index, &ast.Boolean{}, exp)
+		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", index, input, &ast.Boolean{}, exp)
 		return false
 	}
 
 	if value != boolean.Value {
-		t.Errorf("test[%d] - boolean.Value ==> expected: %t actual: %t", index, value, boolean.Value)
+		t.Errorf("test[%d] - %q - boolean.Value ==> expected: %t actual: %t", index, input, value, boolean.Value)
 		return false
 	}
 
 	if fmt.Sprintf("%t", value) != boolean.TokenLiteral() {
-		t.Errorf("test[%d] - boolean.TokenLiteral() ==> expected: %t actual: %q", index, value, boolean.TokenLiteral())
+		t.Errorf("test[%d] - %q - boolean.TokenLiteral() ==> expected: %t actual: %q", index, input, value, boolean.TokenLiteral())
 		return false
 	}
 
 	return true
 }
 
-func testPrefixExpression(t *testing.T, index int, exp ast.Expression, operator string, right ExpressionTest) bool {
+func testPrefixExpression(t *testing.T, index int, input string, exp ast.Expression, operator string, right ExpressionTest) bool {
 	opExp, ok := exp.(*ast.PrefixExpression)
 	if !ok {
-		t.Errorf("test[%d] - exp ==> unexpected type. expected: %T actual: %T", index, &ast.PrefixExpression{}, exp)
+		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", index, input, &ast.PrefixExpression{}, exp)
 		return false
 	}
 
 	if operator != opExp.Operator {
-		t.Errorf("test[%d] - opExp.Operator ==> expected: %q actual: %q", index, operator, opExp.Operator)
+		t.Errorf("test[%d] - %q - opExp.Operator ==> expected: %q actual: %q", index, input, operator, opExp.Operator)
 		return false
 	}
 
-	if !testExpression(t, index, opExp.Right, right) {
+	if !testExpression(t, index, input, opExp.Right, right) {
 		return false
 	}
 
 	return true
 }
 
-func testInfixExpression(t *testing.T, index int, exp ast.Expression, left ExpressionTest, operator string, right ExpressionTest) bool {
+func testInfixExpression(t *testing.T, index int, input string, exp ast.Expression, left ExpressionTest, operator string, right ExpressionTest) bool {
 	opExp, ok := exp.(*ast.InfixExpression)
 	if !ok {
-		t.Errorf("test[%d] - exp ==> unexpected type. expected: %T actual: %T", index, &ast.InfixExpression{}, exp)
+		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", index, input, &ast.InfixExpression{}, exp)
 		return false
 	}
 
-	if !testExpression(t, index, opExp.Left, left) {
+	if !testExpression(t, index, input, opExp.Left, left) {
 		return false
 	}
 
 	if operator != opExp.Operator {
-		t.Errorf("test[%d] - opExp.Operator ==> expected: %q actual: %q", index, operator, opExp.Operator)
+		t.Errorf("test[%d] - %q - opExp.Operator ==> expected: %q actual: %q", index, input, operator, opExp.Operator)
 		return false
 	}
 
-	if !testExpression(t, index, opExp.Right, right) {
+	if !testExpression(t, index, input, opExp.Right, right) {
 		return false
 	}
 
 	return true
 }
 
-func testIfExpression(t *testing.T, index int, exp ast.Expression, condition ExpressionTest, consequence *BlockStatementTest, alternative *BlockStatementTest) bool {
+func testIfExpression(t *testing.T, index int, input string, exp ast.Expression, condition ExpressionTest, consequence *BlockStatementTest, alternative *BlockStatementTest) bool {
 	if "if" != exp.TokenLiteral() {
-		t.Errorf("test[%d] - exp.TokenLiteral() ==> expected: 'if' actual: %q", index, exp.TokenLiteral())
+		t.Errorf("test[%d] - %q - exp.TokenLiteral() ==> expected: 'if' actual: %q", index, input, exp.TokenLiteral())
 		return false
 	}
 
 	ifExp, ok := exp.(*ast.IfExpression)
 	if !ok {
-		t.Errorf("test[%d] - exp ==> unexpected type. expected: %T actual: %T", index, &ast.IfExpression{}, exp)
+		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", index, input, &ast.IfExpression{}, exp)
 		return false
 	}
 
-	if !testExpression(t, index, ifExp.Condition, condition) {
+	if !testExpression(t, index, input, ifExp.Condition, condition) {
 		return false
 	}
 
-	if !testBlockStatement(t, index, ifExp.Consequence, consequence.tests) {
+	if !testBlockStatement(t, index, input, ifExp.Consequence, consequence.tests) {
 		return false
 	}
 
-	if alternative != nil && !testBlockStatement(t, index, ifExp.Alternative, alternative.tests) {
+	if alternative != nil && !testBlockStatement(t, index, input, ifExp.Alternative, alternative.tests) {
 		return false
 	}
 
 	return true
 }
 
-func testFunctionLiteral(t *testing.T, index int, exp ast.Expression, parameters []string, body *BlockStatementTest) bool {
+func testFunctionLiteral(t *testing.T, index int, input string, exp ast.Expression, parameters []string, body *BlockStatementTest) bool {
 	if "fn" != exp.TokenLiteral() {
-		t.Errorf("test[%d] - exp.TokenLiteral() ==> expected: 'fn' actual: %q", index, exp.TokenLiteral())
+		t.Errorf("test[%d] - %q - exp.TokenLiteral() ==> expected: 'fn' actual: %q", index, input, exp.TokenLiteral())
 		return false
 	}
 
 	fnExp, ok := exp.(*ast.FunctionLiteral)
 	if !ok {
-		t.Errorf("test[%d] - exp ==> unexpected type. expected: %T actual: %T", index, &ast.FunctionLiteral{}, exp)
+		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", index, input, &ast.FunctionLiteral{}, exp)
 		return false
 	}
 
 	if len(parameters) != len(fnExp.Parameters) {
-		t.Errorf("test[%d] - len(fnExp.Parameters) ==> expected: %d actual: %d", index, len(parameters), len(fnExp.Parameters))
+		t.Errorf("test[%d] - %q - len(fnExp.Parameters) ==> expected: %d actual: %d", index, input, len(parameters), len(fnExp.Parameters))
 		return false
 	}
 
 	for i, parameter := range fnExp.Parameters {
-		if !testIdentifier(t, index, parameter, parameters[i]) {
+		if !testIdentifier(t, index, input, parameter, parameters[i]) {
 			return false
 		}
 	}
 
-	if !testBlockStatement(t, index, fnExp.Body, body.tests) {
+	if !testBlockStatement(t, index, input, fnExp.Body, body.tests) {
 		return false
 	}
 
 	return true
 }
 
-func testCallExpression(t *testing.T, index int, exp ast.Expression, function ExpressionTest, arguments []ExpressionTest) bool {
+func testCallExpression(t *testing.T, index int, input string, exp ast.Expression, function ExpressionTest, arguments []ExpressionTest) bool {
 	if "(" != exp.TokenLiteral() {
-		t.Errorf("test[%d] - exp.TokenLiteral() ==> expected: '(' actual: %q", index, exp.TokenLiteral())
+		t.Errorf("test[%d] - %q - exp.TokenLiteral() ==> expected: '(' actual: %q", index, input, exp.TokenLiteral())
 		return false
 	}
 
 	callExp, ok := exp.(*ast.CallExpression)
 	if !ok {
-		t.Errorf("test[%d] - exp ==> unexpected type. expected: %T actual: %T", index, &ast.CallExpression{}, exp)
+		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", index, input, &ast.CallExpression{}, exp)
 		return false
 	}
 
 	switch test := function.(type) {
 	case IdentifierTest:
-		if !testIdentifier(t, index, callExp.Function, string(test)) {
+		if !testIdentifier(t, index, input, callExp.Function, string(test)) {
 			return false
 		}
 	case FunctionLiteralTest:
-		if !testFunctionLiteral(t, index, callExp.Function, test.parameters, test.body) {
+		if !testFunctionLiteral(t, index, input, callExp.Function, test.parameters, test.body) {
 			return false
 		}
 	default:
-		t.Errorf("test[%d] - test ==> unexpected type. actual: %T", index, test)
+		t.Errorf("test[%d] - %q - test ==> unexpected type. actual: %T", index, input, test)
 		return false
 	}
 
 	if len(arguments) != len(callExp.Arguements) {
-		t.Errorf("test[%d] - len(callExp.Arguements) ==> expected: %d actual: %d", index, len(arguments), len(callExp.Arguements))
+		t.Errorf("test[%d] - %q - len(callExp.Arguements) ==> expected: %d actual: %d", index, input, len(arguments), len(callExp.Arguements))
 		return false
 	}
 
 	for i, argument := range callExp.Arguements {
-		if !testExpression(t, index, argument, arguments[i]) {
+		if !testExpression(t, index, input, argument, arguments[i]) {
 			return false
 		}
 	}

@@ -19,6 +19,10 @@ type BooleanTest bool
 
 func (bt BooleanTest) object() {}
 
+type NullTest struct{}
+
+func (nt NullTest) object() {}
+
 func TestEval(t *testing.T) {
 	tests := []struct {
 		input string
@@ -93,6 +97,38 @@ func TestEval(t *testing.T) {
 			BooleanTest(false),
 		},
 		{
+			"1 < 2",
+			BooleanTest(true),
+		},
+		{
+			"1 > 2",
+			BooleanTest(false),
+		},
+		{
+			"1 < 1",
+			BooleanTest(false),
+		},
+		{
+			"1 > 1",
+			BooleanTest(false),
+		},
+		{
+			"1 == 1",
+			BooleanTest(true),
+		},
+		{
+			"1 != 1",
+			BooleanTest(false),
+		},
+		{
+			"1 == 2",
+			BooleanTest(false),
+		},
+		{
+			"1 != 2",
+			BooleanTest(true),
+		},
+		{
 			"true == true",
 			BooleanTest(true),
 		},
@@ -133,38 +169,6 @@ func TestEval(t *testing.T) {
 			BooleanTest(false),
 		},
 		{
-			"1 < 2",
-			BooleanTest(true),
-		},
-		{
-			"1 > 2",
-			BooleanTest(false),
-		},
-		{
-			"1 < 1",
-			BooleanTest(false),
-		},
-		{
-			"1 > 1",
-			BooleanTest(false),
-		},
-		{
-			"1 == 1",
-			BooleanTest(true),
-		},
-		{
-			"1 != 1",
-			BooleanTest(false),
-		},
-		{
-			"1 == 2",
-			BooleanTest(false),
-		},
-		{
-			"1 != 2",
-			BooleanTest(true),
-		},
-		{
 			"!false",
 			BooleanTest(true),
 		},
@@ -184,6 +188,34 @@ func TestEval(t *testing.T) {
 			"!!5",
 			BooleanTest(true),
 		},
+		{
+			"if (true) { 10 }",
+			IntegerTest(10),
+		},
+		{
+			"if (false) { 10 }",
+			NullTest{},
+		},
+		{
+			"if (1) { 10 }",
+			IntegerTest(10),
+		},
+		{
+			"if (1 < 2) { 10 }",
+			IntegerTest(10),
+		},
+		{
+			"if (1 > 2) { 10 }",
+			NullTest{},
+		},
+		{
+			"if (1 > 2) { 10 } else { 20 }",
+			IntegerTest(20),
+		},
+		{
+			"if (1 < 2) { 10 } else { 20 }",
+			IntegerTest(10),
+		},
 	}
 
 	for i, tt := range tests {
@@ -192,47 +224,58 @@ func TestEval(t *testing.T) {
 		program := p.ParseProgram()
 		eval := Eval(program)
 
-		if !testObject(t, i, eval, tt.test) {
+		if !testObject(t, i, tt.input, eval, tt.test) {
 			return
 		}
 	}
 }
 
-func testObject(t *testing.T, index int, obj object.Object, test ObjectTest) bool {
+func testObject(t *testing.T, index int, input string, obj object.Object, test ObjectTest) bool {
 	switch test := test.(type) {
 	case IntegerTest:
-		return testInteger(t, index, obj, int64(test))
+		return testInteger(t, index, input, obj, int64(test))
 	case BooleanTest:
-		return testBoolean(t, index, obj, bool(test))
+		return testBoolean(t, index, input, obj, bool(test))
+	case NullTest:
+		return testNull(t, index, input, obj)
 	}
-	t.Errorf("test[%d] - test ==> unexpected type. actual: %T", index, test)
+	t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", index, input, test)
 	return false
 }
 
-func testInteger(t *testing.T, index int, obj object.Object, value int64) bool {
+func testInteger(t *testing.T, index int, input string, obj object.Object, value int64) bool {
 	result, ok := obj.(*object.Integer)
 	if !ok {
-		t.Errorf("test[%d] - obj ==> unexpected type. expected: %T actual: %T", index, object.Integer{}, obj)
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Integer{}, obj)
 		return false
 	}
 
 	if value != result.Value {
-		t.Errorf("test[%d] - result.Value ==> expected: %q actual: %q", index, value, result.Value)
+		t.Errorf("test[%d] - %q - result.Value ==> expected: %q actual: %q", index, input, value, result.Value)
 		return false
 	}
 
 	return true
 }
 
-func testBoolean(t *testing.T, index int, obj object.Object, value bool) bool {
+func testBoolean(t *testing.T, index int, input string, obj object.Object, value bool) bool {
 	result, ok := obj.(*object.Boolean)
 	if !ok {
-		t.Errorf("test[%d] - obj ==> unexpected type. expected: %T actual: %T", index, object.Boolean{}, obj)
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Boolean{}, obj)
 		return false
 	}
 
 	if value != result.Value {
-		t.Errorf("test[%d] - result.Value ==> expected: %t actual: %t", index, value, result.Value)
+		t.Errorf("test[%d] - %q - result.Value ==> expected: %t actual: %t", index, input, value, result.Value)
+		return false
+	}
+
+	return true
+}
+
+func testNull(t *testing.T, index int, input string, obj object.Object) bool {
+	if NULL != obj {
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Null{}, obj)
 		return false
 	}
 

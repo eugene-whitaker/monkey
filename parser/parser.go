@@ -280,15 +280,18 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	return exp
 }
 
-func (p *Parser) parseGroupedExpression() ast.Expression {
-	// defer untrace(trace("parseGroupedExpression"))
-	p.advance()
-
-	exp := p.parseExpression(LOWEST)
-
-	if !p.expect(token.RPAREN, "expected <)> token following grouped expression") {
-		return nil
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	// defer untrace(trace("parseInfixExpression"))
+	exp := &ast.InfixExpression{
+		Token:    p.tok,
+		Operator: p.tok.Lexeme,
+		Left:     left,
 	}
+
+	precedence := p.precedence(p.tok.Type)
+	p.advance()
+	exp.Right = p.parseExpression(precedence)
+	//                            ^^^ decrement here for right-associativity
 
 	return exp
 }
@@ -350,22 +353,6 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 	return lit
 }
 
-func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
-	// defer untrace(trace("parseInfixExpression"))
-	exp := &ast.InfixExpression{
-		Token:    p.tok,
-		Operator: p.tok.Lexeme,
-		Left:     left,
-	}
-
-	precedence := p.precedence(p.tok.Type)
-	p.advance()
-	exp.Right = p.parseExpression(precedence)
-	//                            ^^^ decrement here for right-associativity
-
-	return exp
-}
-
 func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
 	// defer untrace(trace("parseCallExpression"))
 	exp := &ast.CallExpression{
@@ -374,6 +361,19 @@ func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
 	}
 
 	exp.Arguements = p.parseCallArguments()
+
+	return exp
+}
+
+func (p *Parser) parseGroupedExpression() ast.Expression {
+	// defer untrace(trace("parseGroupedExpression"))
+	p.advance()
+
+	exp := p.parseExpression(LOWEST)
+
+	if !p.expect(token.RPAREN, "expected <)> token following grouped expression") {
+		return nil
+	}
 
 	return exp
 }

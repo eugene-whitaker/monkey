@@ -6,6 +6,7 @@ import (
 )
 
 var (
+	ZERO  = &object.Integer{Value: 0}
 	TRUE  = &object.Boolean{Value: true}
 	FALSE = &object.Boolean{Value: false}
 	NULL  = &object.Null{}
@@ -17,6 +18,8 @@ func Eval(node ast.Node) object.Object {
 		return evalProgram(node)
 	case *ast.ExpressionStatement:
 		return evalExpressionStatement(node)
+	case *ast.BlockStatement:
+		return evalBlockStatement(node)
 	case *ast.IntegerLiteral:
 		return evalIntegerLiteral(node)
 	case *ast.Boolean:
@@ -25,6 +28,8 @@ func Eval(node ast.Node) object.Object {
 		return evalPrefixExpression(node)
 	case *ast.InfixExpression:
 		return evalInfixExpression(node)
+	case *ast.IfExpression:
+		return evalIfExpression(node)
 	}
 
 	return nil
@@ -44,10 +49,18 @@ func evalExpressionStatement(node *ast.ExpressionStatement) object.Object {
 	return Eval(node.Expression)
 }
 
-func evalIntegerLiteral(node *ast.IntegerLiteral) object.Object {
-	return &object.Integer{
-		Value: node.Value,
+func evalBlockStatement(node *ast.BlockStatement) object.Object {
+	var result object.Object
+
+	for _, stmt := range node.Statements {
+		result = Eval(stmt)
 	}
+
+	return result
+}
+
+func evalIntegerLiteral(node *ast.IntegerLiteral) object.Object {
+	return toIntegerObject(node.Value)
 }
 
 func evalBoolean(node *ast.Boolean) object.Object {
@@ -72,11 +85,9 @@ func evalPrefixExpression(node *ast.PrefixExpression) object.Object {
 func evalIntegerPrefixExpression(operator string, right *object.Integer) object.Object {
 	switch operator {
 	case "!":
-		return toBooleanObject(right.Value == 0)
+		return toBooleanObject(right == ZERO)
 	case "-":
-		return &object.Integer{
-			Value: -right.Value,
-		}
+		return toIntegerObject(-right.Value)
 	default:
 		return NULL
 	}
@@ -119,21 +130,13 @@ func evalInfixExpression(node *ast.InfixExpression) object.Object {
 func evalIntegerInfixExpression(operator string, left, right *object.Integer) object.Object {
 	switch operator {
 	case "+":
-		return &object.Integer{
-			Value: left.Value + right.Value,
-		}
+		return toIntegerObject(left.Value + right.Value)
 	case "-":
-		return &object.Integer{
-			Value: left.Value - right.Value,
-		}
+		return toIntegerObject(left.Value - right.Value)
 	case "*":
-		return &object.Integer{
-			Value: left.Value * right.Value,
-		}
+		return toIntegerObject(left.Value * right.Value)
 	case "/":
-		return &object.Integer{
-			Value: left.Value / right.Value,
-		}
+		return toIntegerObject(left.Value / right.Value)
 	case "<":
 		return toBooleanObject(left.Value < right.Value)
 	case ">":
@@ -169,9 +172,39 @@ func evalNullInfixExpression(operator string) object.Object {
 	}
 }
 
+func evalIfExpression(node *ast.IfExpression) object.Object {
+	condition := Eval(node.Condition)
+
+	if isTruthy(condition) {
+		return Eval(node.Consequence)
+	} else if node.Alternative != nil {
+		return Eval(node.Alternative)
+	}
+
+	return NULL
+}
+
+func toIntegerObject(val int64) object.Object {
+	if val == 0 {
+		return ZERO
+	}
+	return &object.Integer{
+		Value: val,
+	}
+}
+
 func toBooleanObject(val bool) object.Object {
 	if val {
 		return TRUE
 	}
 	return FALSE
+}
+
+func isTruthy(obj object.Object) bool {
+	switch obj {
+	case ZERO, FALSE, NULL:
+		return false
+	default:
+		return true
+	}
 }
