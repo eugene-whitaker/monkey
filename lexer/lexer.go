@@ -71,6 +71,8 @@ func (l *Lexer) NextToken() token.Token {
 		case '}':
 			return l.emit(token.RBRACE)
 		case ' ', '\t', '\r', '\n':
+		case '"':
+			return l.string()
 		default:
 			if isLetter(l.ch) {
 				literal := l.identifier()
@@ -159,6 +161,30 @@ func (l *Lexer) number() string {
 		l.consume()
 	}
 	return l.input[l.start:l.current]
+}
+
+func (l *Lexer) string() token.Token {
+	for l.peek() != '"' && l.peek() != 0 {
+		l.consume()
+	}
+
+	if l.peek() != '"' {
+		return token.Token{
+			Type:   token.ILLEGAL,
+			Lexeme: l.input[l.start:l.current],
+			Offset: l.start,
+			Length: l.start - l.current,
+		}
+	}
+
+	l.consume()
+
+	return token.Token{
+		Type:   token.STRING,
+		Lexeme: l.input[l.start+1 : l.current-1],
+		Offset: l.start,
+		Length: l.start - l.current,
+	}
 }
 
 func (l *Lexer) emit(ttype token.TokenType) token.Token {

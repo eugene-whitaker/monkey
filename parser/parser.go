@@ -69,11 +69,12 @@ func NewParser(l *lexer.Lexer) *Parser {
 		token.INT:      p.parseIntegerLiteral,
 		token.BANG:     p.parsePrefixExpression,
 		token.MINUS:    p.parsePrefixExpression,
-		token.TRUE:     p.parseBoolean,
-		token.FALSE:    p.parseBoolean,
+		token.TRUE:     p.parseBooleanLiteral,
+		token.FALSE:    p.parseBooleanLiteral,
 		token.LPAREN:   p.parseGroupedExpression,
 		token.IF:       p.parseIfExpression,
 		token.FUNCTION: p.parseFunctionLiteral,
+		token.STRING:   p.parseStringLiteral,
 	}
 
 	p.infixFuncs = map[token.TokenType]infixFunc{
@@ -258,11 +259,19 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 	return lit
 }
 
-func (p *Parser) parseBoolean() ast.Expression {
-	// defer untrace(trace("parseBoolean"))
-	return &ast.Boolean{
+func (p *Parser) parseBooleanLiteral() ast.Expression {
+	// defer untrace(trace("parseBooleanLiteral"))
+	return &ast.BooleanLiteral{
 		Token: p.tok,
 		Value: p.tok.Type == token.TRUE,
+	}
+}
+
+func (p *Parser) parseStringLiteral() ast.Expression {
+	// defer untrace(trace("parseStringLiteral"))
+	return &ast.StringLiteral{
+		Token: p.tok,
+		Value: p.tok.Lexeme,
 	}
 }
 

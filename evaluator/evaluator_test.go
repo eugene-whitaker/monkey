@@ -23,9 +23,7 @@ type NullTest struct{}
 
 func (nt NullTest) object() {}
 
-type ErrorTest struct {
-	message string
-}
+type ErrorTest string
 
 func (et ErrorTest) object() {}
 
@@ -35,6 +33,10 @@ type FunctionTest struct {
 }
 
 func (ft FunctionTest) object() {}
+
+type StringTest string
+
+func (st StringTest) object() {}
 
 func TestEval(t *testing.T) {
 	tests := []struct {
@@ -263,51 +265,39 @@ func TestEval(t *testing.T) {
 		},
 		{
 			"5 + true;",
-			ErrorTest{
-				"unknown operation: INTEGER + BOOLEAN",
-			},
+			ErrorTest("unknown operation: INTEGER + BOOLEAN"),
 		},
 		{
 			"5 + true; 5;",
-			ErrorTest{
-				"unknown operation: INTEGER + BOOLEAN",
-			},
+			ErrorTest("unknown operation: INTEGER + BOOLEAN"),
 		},
 		{
 			"-true;",
-			ErrorTest{
-				"unknown operation: -BOOLEAN",
-			},
+			ErrorTest("unknown operation: -BOOLEAN"),
 		},
 		{
 			"true + false;",
-			ErrorTest{
-				"unknown operation: BOOLEAN + BOOLEAN",
-			},
+			ErrorTest("unknown operation: BOOLEAN + BOOLEAN"),
 		},
 		{
 			"5; true + false; 5;",
-			ErrorTest{
-				"unknown operation: BOOLEAN + BOOLEAN",
-			},
+			ErrorTest("unknown operation: BOOLEAN + BOOLEAN"),
 		},
 		{
 			"if (10 > 1) { true + false; };",
-			ErrorTest{
-				"unknown operation: BOOLEAN + BOOLEAN",
-			},
+			ErrorTest("unknown operation: BOOLEAN + BOOLEAN"),
 		},
 		{
 			"if (10 > 1) { if (10 > 1) { return true + false; } return 1; };",
-			ErrorTest{
-				"unknown operation: BOOLEAN + BOOLEAN",
-			},
+			ErrorTest("unknown operation: BOOLEAN + BOOLEAN"),
 		},
 		{
 			"ident",
-			ErrorTest{
-				"unknown identifier: ident",
-			},
+			ErrorTest("undefined reference to identifier: ident"),
+		},
+		{
+			"\"hello\" - \"world\"",
+			ErrorTest("unknown operation: STRING - STRING"),
 		},
 		{
 			"let a = 5; a;",
@@ -366,6 +356,14 @@ func TestEval(t *testing.T) {
 			"let first = 10; let second = 10; let third = 10; let func = fn(first) { let second = 20; first + second + third; }; func(20) + first + second;",
 			IntegerTest(70),
 		},
+		{
+			"\"hello world\";",
+			StringTest("hello world"),
+		},
+		{
+			"\"hello\" + \" \" + \"world\";",
+			StringTest("hello world"),
+		},
 	}
 
 	for i, tt := range tests {
@@ -390,9 +388,11 @@ func testObject(t *testing.T, index int, input string, obj object.Object, test O
 	case NullTest:
 		return testNull(t, index, input, obj)
 	case ErrorTest:
-		return testError(t, index, input, obj, test.message)
+		return testError(t, index, input, obj, string(test))
 	case FunctionTest:
 		return testFunction(t, index, input, obj, test.parameters, test.body)
+	case StringTest:
+		return testString(t, index, input, obj, string(test))
 	}
 	t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", index, input, test)
 	return false
@@ -437,15 +437,15 @@ func testNull(t *testing.T, index int, input string, obj object.Object) bool {
 	return true
 }
 
-func testError(t *testing.T, index int, input string, obj object.Object, msg string) bool {
+func testError(t *testing.T, index int, input string, obj object.Object, message string) bool {
 	result, ok := obj.(*object.Error)
 	if !ok {
 		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Error{}, obj)
 		return false
 	}
 
-	if msg != result.Message {
-		t.Errorf("test[%d] - %q - result.Value ==> expected: %q actual: %q", index, input, msg, result.Message)
+	if message != result.Message {
+		t.Errorf("test[%d] - %q - result.Message ==> expected: %q actual: %q", index, input, message, result.Message)
 		return false
 	}
 
@@ -474,6 +474,21 @@ func testFunction(t *testing.T, index int, input string, obj object.Object, para
 	actual := result.Body.String()
 	if body != actual {
 		t.Errorf("test[%d] - %q - result.Body.String() ==> expected: %q actual: %q", index, input, body, actual)
+		return false
+	}
+
+	return true
+}
+
+func testString(t *testing.T, index int, input string, obj object.Object, message string) bool {
+	result, ok := obj.(*object.String)
+	if !ok {
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.String{}, obj)
+		return false
+	}
+
+	if message != result.Value {
+		t.Errorf("test[%d] - %q - result.Value ==> expected: %q actual: %q", index, input, message, result.Value)
 		return false
 	}
 

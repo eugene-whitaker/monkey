@@ -48,9 +48,13 @@ type IntegerLiteralTest int64
 
 func (ilt IntegerLiteralTest) expression() {}
 
-type BooleanTest bool
+type BooleanLiteralTest bool
 
-func (bt BooleanTest) expression() {}
+func (blt BooleanLiteralTest) expression() {}
+
+type StringLiteralTest string
+
+func (slt StringLiteralTest) expression() {}
 
 type PrefixExpressionTest struct {
 	operator   string
@@ -111,7 +115,7 @@ func TestParseProgram(t *testing.T) {
 			[]StatementTest{
 				LetStatementTest{
 					"y",
-					BooleanTest(true),
+					BooleanLiteralTest(true),
 				},
 			},
 		},
@@ -139,7 +143,7 @@ func TestParseProgram(t *testing.T) {
 			"return true;",
 			[]StatementTest{
 				ReturnStatementTest{
-					BooleanTest(true),
+					BooleanLiteralTest(true),
 				},
 			},
 		},
@@ -175,7 +179,7 @@ func TestParseProgram(t *testing.T) {
 			"true",
 			[]StatementTest{
 				ExpressionStatementTest{
-					BooleanTest(true),
+					BooleanLiteralTest(true),
 				},
 			},
 		},
@@ -184,7 +188,7 @@ func TestParseProgram(t *testing.T) {
 			"false",
 			[]StatementTest{
 				ExpressionStatementTest{
-					BooleanTest(false),
+					BooleanLiteralTest(false),
 				},
 			},
 		},
@@ -219,7 +223,7 @@ func TestParseProgram(t *testing.T) {
 				ExpressionStatementTest{
 					PrefixExpressionTest{
 						"!",
-						BooleanTest(true),
+						BooleanLiteralTest(true),
 					},
 				},
 			},
@@ -231,7 +235,7 @@ func TestParseProgram(t *testing.T) {
 				ExpressionStatementTest{
 					PrefixExpressionTest{
 						"!",
-						BooleanTest(false),
+						BooleanLiteralTest(false),
 					},
 				},
 			},
@@ -333,9 +337,9 @@ func TestParseProgram(t *testing.T) {
 			[]StatementTest{
 				ExpressionStatementTest{
 					InfixExpressionTest{
-						BooleanTest(true),
+						BooleanLiteralTest(true),
 						"==",
-						BooleanTest(true),
+						BooleanLiteralTest(true),
 					},
 				},
 			},
@@ -346,9 +350,9 @@ func TestParseProgram(t *testing.T) {
 			[]StatementTest{
 				ExpressionStatementTest{
 					InfixExpressionTest{
-						BooleanTest(true),
+						BooleanLiteralTest(true),
 						"!=",
-						BooleanTest(false),
+						BooleanLiteralTest(false),
 					},
 				},
 			},
@@ -359,9 +363,9 @@ func TestParseProgram(t *testing.T) {
 			[]StatementTest{
 				ExpressionStatementTest{
 					InfixExpressionTest{
-						BooleanTest(false),
+						BooleanLiteralTest(false),
 						"==",
-						BooleanTest(false),
+						BooleanLiteralTest(false),
 					},
 				},
 			},
@@ -770,7 +774,7 @@ func TestParseProgram(t *testing.T) {
 							IntegerLiteralTest(5),
 						},
 						"==",
-						BooleanTest(false),
+						BooleanLiteralTest(false),
 					},
 				},
 			},
@@ -787,7 +791,7 @@ func TestParseProgram(t *testing.T) {
 							IntegerLiteralTest(5),
 						},
 						"==",
-						BooleanTest(true),
+						BooleanLiteralTest(true),
 					},
 				},
 			},
@@ -871,9 +875,9 @@ func TestParseProgram(t *testing.T) {
 					PrefixExpressionTest{
 						"!",
 						InfixExpressionTest{
-							BooleanTest(true),
+							BooleanLiteralTest(true),
 							"==",
-							BooleanTest(true),
+							BooleanLiteralTest(true),
 						},
 					},
 				},
@@ -976,6 +980,15 @@ func TestParseProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			"\"hello world\";",
+			"hello world",
+			[]StatementTest{
+				ExpressionStatementTest{
+					StringLiteralTest("hello world"),
+				},
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -1039,8 +1052,8 @@ func testStatement(t *testing.T, index int, input string, stmt ast.Statement, te
 }
 
 func testLetStatement(t *testing.T, index int, input string, stmt ast.Statement, name string, value ExpressionTest) bool {
-	if "let" != stmt.TokenLiteral() {
-		t.Errorf("test[%d] - %q - stmt.TokenLiteral() ==> expected: 'let' actual: %q", index, input, stmt.TokenLiteral())
+	if "let" != stmt.TokenLexeme() {
+		t.Errorf("test[%d] - %q - stmt.TokenLexeme() ==> expected: 'let' actual: %q", index, input, stmt.TokenLexeme())
 		return false
 	}
 
@@ -1062,8 +1075,8 @@ func testLetStatement(t *testing.T, index int, input string, stmt ast.Statement,
 }
 
 func testReturnStatement(t *testing.T, index int, input string, stmt ast.Statement, returnValue ExpressionTest) bool {
-	if "return" != stmt.TokenLiteral() {
-		t.Errorf("test[%d] - %q - stmt.TokenLiteral() ==> expected: 'return' actual: %q", index, input, stmt.TokenLiteral())
+	if "return" != stmt.TokenLexeme() {
+		t.Errorf("test[%d] - %q - stmt.TokenLexeme() ==> expected: 'return' actual: %q", index, input, stmt.TokenLexeme())
 		return false
 	}
 
@@ -1095,8 +1108,8 @@ func testExpressionStatement(t *testing.T, index int, input string, stmt ast.Sta
 }
 
 func testBlockStatement(t *testing.T, index int, input string, stmt ast.Statement, tests []StatementTest) bool {
-	if "{" != stmt.TokenLiteral() {
-		t.Errorf("test[%d] - %q - stmt.TokenLiteral() ==> expected: '{' actual: %q", index, input, stmt.TokenLiteral())
+	if "{" != stmt.TokenLexeme() {
+		t.Errorf("test[%d] - %q - stmt.TokenLexeme() ==> expected: '{' actual: %q", index, input, stmt.TokenLexeme())
 		return false
 	}
 
@@ -1126,8 +1139,10 @@ func testExpression(t *testing.T, index int, input string, exp ast.Expression, t
 		return testIdentifier(t, index, input, exp, string(test))
 	case IntegerLiteralTest:
 		return testIntegerLiteral(t, index, input, exp, int64(test))
-	case BooleanTest:
-		return testBoolean(t, index, input, exp, bool(test))
+	case BooleanLiteralTest:
+		return testBooleanLiteral(t, index, input, exp, bool(test))
+	case StringLiteralTest:
+		return testStringLiteral(t, index, input, exp, string(test))
 	case PrefixExpressionTest:
 		return testPrefixExpression(t, index, input, exp, test.operator, test.rightValue)
 	case InfixExpressionTest:
@@ -1155,8 +1170,8 @@ func testIdentifier(t *testing.T, index int, input string, exp ast.Expression, v
 		return false
 	}
 
-	if value != ident.TokenLiteral() {
-		t.Errorf("test[%d] - %q - ident.TokenLiteral() ==> expected: %q actual: %q", index, input, value, ident.TokenLiteral())
+	if value != ident.TokenLexeme() {
+		t.Errorf("test[%d] - %q - ident.TokenLexeme() ==> expected: %q actual: %q", index, input, value, ident.TokenLexeme())
 		return false
 	}
 
@@ -1175,18 +1190,18 @@ func testIntegerLiteral(t *testing.T, index int, input string, exp ast.Expressio
 		return false
 	}
 
-	if fmt.Sprintf("%d", value) != integ.TokenLiteral() {
-		t.Errorf("test[%d] - %q - integ.TokenLiteral() ==> expected: %d actual: %q", index, input, value, integ.TokenLiteral())
+	if fmt.Sprintf("%d", value) != integ.TokenLexeme() {
+		t.Errorf("test[%d] - %q - integ.TokenLexeme() ==> expected: %d actual: %q", index, input, value, integ.TokenLexeme())
 		return false
 	}
 
 	return true
 }
 
-func testBoolean(t *testing.T, index int, input string, exp ast.Expression, value bool) bool {
-	boolean, ok := exp.(*ast.Boolean)
+func testBooleanLiteral(t *testing.T, index int, input string, exp ast.Expression, value bool) bool {
+	boolean, ok := exp.(*ast.BooleanLiteral)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", index, input, &ast.Boolean{}, exp)
+		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", index, input, &ast.BooleanLiteral{}, exp)
 		return false
 	}
 
@@ -1195,8 +1210,28 @@ func testBoolean(t *testing.T, index int, input string, exp ast.Expression, valu
 		return false
 	}
 
-	if fmt.Sprintf("%t", value) != boolean.TokenLiteral() {
-		t.Errorf("test[%d] - %q - boolean.TokenLiteral() ==> expected: %t actual: %q", index, input, value, boolean.TokenLiteral())
+	if fmt.Sprintf("%t", value) != boolean.TokenLexeme() {
+		t.Errorf("test[%d] - %q - boolean.TokenLexeme() ==> expected: %t actual: %q", index, input, value, boolean.TokenLexeme())
+		return false
+	}
+
+	return true
+}
+
+func testStringLiteral(t *testing.T, index int, input string, exp ast.Expression, value string) bool {
+	str, ok := exp.(*ast.StringLiteral)
+	if !ok {
+		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", index, input, &ast.StringLiteral{}, exp)
+		return false
+	}
+
+	if value != str.Value {
+		t.Errorf("test[%d] - %q - str.Value ==> expected: %q actual: %q", index, input, value, str.Value)
+		return false
+	}
+
+	if value != str.TokenLexeme() {
+		t.Errorf("test[%d] - %q - str.TokenLexeme() ==> expected: %q actual: %q", index, input, value, str.TokenLexeme())
 		return false
 	}
 
@@ -1246,8 +1281,8 @@ func testInfixExpression(t *testing.T, index int, input string, exp ast.Expressi
 }
 
 func testIfExpression(t *testing.T, index int, input string, exp ast.Expression, condition ExpressionTest, consequence *BlockStatementTest, alternative *BlockStatementTest) bool {
-	if "if" != exp.TokenLiteral() {
-		t.Errorf("test[%d] - %q - exp.TokenLiteral() ==> expected: 'if' actual: %q", index, input, exp.TokenLiteral())
+	if "if" != exp.TokenLexeme() {
+		t.Errorf("test[%d] - %q - exp.TokenLexeme() ==> expected: 'if' actual: %q", index, input, exp.TokenLexeme())
 		return false
 	}
 
@@ -1273,8 +1308,8 @@ func testIfExpression(t *testing.T, index int, input string, exp ast.Expression,
 }
 
 func testFunctionLiteral(t *testing.T, index int, input string, exp ast.Expression, parameters []string, body *BlockStatementTest) bool {
-	if "fn" != exp.TokenLiteral() {
-		t.Errorf("test[%d] - %q - exp.TokenLiteral() ==> expected: 'fn' actual: %q", index, input, exp.TokenLiteral())
+	if "fn" != exp.TokenLexeme() {
+		t.Errorf("test[%d] - %q - exp.TokenLexeme() ==> expected: 'fn' actual: %q", index, input, exp.TokenLexeme())
 		return false
 	}
 
@@ -1303,8 +1338,8 @@ func testFunctionLiteral(t *testing.T, index int, input string, exp ast.Expressi
 }
 
 func testCallExpression(t *testing.T, index int, input string, exp ast.Expression, function ExpressionTest, arguments []ExpressionTest) bool {
-	if "(" != exp.TokenLiteral() {
-		t.Errorf("test[%d] - %q - exp.TokenLiteral() ==> expected: '(' actual: %q", index, input, exp.TokenLiteral())
+	if "(" != exp.TokenLexeme() {
+		t.Errorf("test[%d] - %q - exp.TokenLexeme() ==> expected: '(' actual: %q", index, input, exp.TokenLexeme())
 		return false
 	}
 

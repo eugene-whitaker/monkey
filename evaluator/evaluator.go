@@ -7,10 +7,19 @@ import (
 )
 
 var (
-	ZERO  = &object.Integer{Value: 0}
-	TRUE  = &object.Boolean{Value: true}
-	FALSE = &object.Boolean{Value: false}
+	ZERO = &object.Integer{
+		Value: 0,
+	}
+	TRUE = &object.Boolean{
+		Value: true,
+	}
+	FALSE = &object.Boolean{
+		Value: false,
+	}
 	NULL  = &object.Null{}
+	EMPTY = &object.String{
+		Value: "",
+	}
 )
 
 func Eval(node ast.Node, env *object.Environment) object.Object {
@@ -29,8 +38,10 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return evalIdentifier(node, env)
 	case *ast.IntegerLiteral:
 		return evalIntegerLiteral(node)
-	case *ast.Boolean:
-		return evalBoolean(node)
+	case *ast.BooleanLiteral:
+		return evalBooleanLiteral(node)
+	case *ast.StringLiteral:
+		return evalStringLiteral(node)
 	case *ast.PrefixExpression:
 		return evalPrefixExpression(node, env)
 	case *ast.InfixExpression:
@@ -115,15 +126,19 @@ func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object
 		return obj
 	}
 
-	return toErrorObject("unknown identifier: %s", node.Value)
+	return toErrorObject("undefined reference to identifier: %s", node.Value)
 }
 
 func evalIntegerLiteral(node *ast.IntegerLiteral) object.Object {
 	return toIntegerObject(node.Value)
 }
 
-func evalBoolean(node *ast.Boolean) object.Object {
+func evalBooleanLiteral(node *ast.BooleanLiteral) object.Object {
 	return toBooleanObject(node.Value)
+}
+
+func evalStringLiteral(node *ast.StringLiteral) object.Object {
+	return toStringObject(node.Value)
 }
 
 func evalPrefixExpression(node *ast.PrefixExpression, env *object.Environment) object.Object {
@@ -140,6 +155,8 @@ func evalPrefixExpression(node *ast.PrefixExpression, env *object.Environment) o
 		return evalBooleanPrefixExpression(node.Operator, right.(*object.Boolean))
 	case right.Type() == object.NULL_OBJECT:
 		return evalNullPrefixExpression(node.Operator)
+	case right.Type() == object.STRING_OBJECT:
+		return evalStringPrefixExpression(node.Operator, right.(*object.String))
 	default:
 		return toErrorObject("unknown operation: %s%s", node.Operator, right.Type())
 	}
@@ -174,6 +191,15 @@ func evalNullPrefixExpression(operator string) object.Object {
 	}
 }
 
+func evalStringPrefixExpression(operator string, right *object.String) object.Object {
+	switch operator {
+	case "!":
+		return toBooleanObject(right == EMPTY)
+	default:
+		return toErrorObject("unknown operation: %s%s", operator, object.STRING_OBJECT)
+	}
+}
+
 func evalInfixExpression(node *ast.InfixExpression, env *object.Environment) object.Object {
 	left := Eval(node.Left, env)
 
@@ -194,6 +220,8 @@ func evalInfixExpression(node *ast.InfixExpression, env *object.Environment) obj
 		return evalBooleanInfixExpression(node.Operator, left.(*object.Boolean), right.(*object.Boolean))
 	case left.Type() == object.NULL_OBJECT && right.Type() == object.NULL_OBJECT:
 		return evalNullInfixExpression(node.Operator)
+	case left.Type() == object.STRING_OBJECT && right.Type() == object.STRING_OBJECT:
+		return evalStringInfixExpression(node.Operator, left.(*object.String), right.(*object.String))
 	default:
 		return toErrorObject("unknown operation: %s %s %s", left.Type(), node.Operator, right.Type())
 	}
@@ -241,6 +269,19 @@ func evalNullInfixExpression(operator string) object.Object {
 		return FALSE
 	default:
 		return toErrorObject("unknown operation: %s %s %s", object.NULL_OBJECT, operator, object.NULL_OBJECT)
+	}
+}
+
+func evalStringInfixExpression(operator string, left, right *object.String) object.Object {
+	switch operator {
+	case "+":
+		return toStringObject(left.Value + right.Value)
+	case "==":
+		return toBooleanObject(left.Value == right.Value)
+	case "!=":
+		return toBooleanObject(left.Value != right.Value)
+	default:
+		return toErrorObject("unknown operation: %s %s %s", object.STRING_OBJECT, operator, object.STRING_OBJECT)
 	}
 }
 
@@ -329,9 +370,18 @@ func toErrorObject(format string, args ...any) *object.Error {
 	}
 }
 
+func toStringObject(val string) object.Object {
+	if val == "" {
+		return EMPTY
+	}
+	return &object.String{
+		Value: val,
+	}
+}
+
 func isTruthy(obj object.Object) bool {
 	switch obj {
-	case ZERO, FALSE, NULL:
+	case ZERO, FALSE, NULL, EMPTY:
 		return false
 	default:
 		return true

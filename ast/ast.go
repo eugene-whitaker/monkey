@@ -7,7 +7,7 @@ import (
 )
 
 type Node interface {
-	TokenLiteral() string
+	TokenLexeme() string
 	String() string
 }
 
@@ -25,9 +25,9 @@ type Program struct {
 	Statements []Statement
 }
 
-func (p *Program) TokenLiteral() string {
+func (p *Program) TokenLexeme() string {
 	if len(p.Statements) > 0 {
-		return p.Statements[0].TokenLiteral()
+		return p.Statements[0].TokenLexeme()
 	} else {
 		return ""
 	}
@@ -50,14 +50,14 @@ type LetStatement struct {
 }
 
 func (ls *LetStatement) statementNode() {}
-func (ls *LetStatement) TokenLiteral() string {
+func (ls *LetStatement) TokenLexeme() string {
 	return ls.Token.Lexeme
 }
 
 func (ls *LetStatement) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(ls.TokenLiteral())
+	out.WriteString(ls.TokenLexeme())
 	out.WriteString(" ")
 	out.WriteString(ls.Name.String())
 	out.WriteString(" = ")
@@ -77,14 +77,14 @@ type ReturnStatement struct {
 }
 
 func (rs *ReturnStatement) statementNode() {}
-func (rs *ReturnStatement) TokenLiteral() string {
+func (rs *ReturnStatement) TokenLexeme() string {
 	return rs.Token.Lexeme
 }
 
 func (rs *ReturnStatement) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(rs.TokenLiteral())
+	out.WriteString(rs.TokenLexeme())
 	out.WriteString(" ")
 
 	if rs.ReturnValue != nil {
@@ -102,7 +102,7 @@ type ExpressionStatement struct {
 }
 
 func (es *ExpressionStatement) statementNode() {}
-func (es *ExpressionStatement) TokenLiteral() string {
+func (es *ExpressionStatement) TokenLexeme() string {
 	return es.Token.Lexeme
 }
 
@@ -116,7 +116,7 @@ type BlockStatement struct {
 }
 
 func (bs *BlockStatement) statementNode() {}
-func (bs *BlockStatement) TokenLiteral() string {
+func (bs *BlockStatement) TokenLexeme() string {
 	return bs.Token.Lexeme
 }
 
@@ -136,7 +136,7 @@ type Identifier struct {
 }
 
 func (i *Identifier) expressionNode() {}
-func (i *Identifier) TokenLiteral() string {
+func (i *Identifier) TokenLexeme() string {
 	return i.Token.Lexeme
 }
 
@@ -150,7 +150,7 @@ type IntegerLiteral struct {
 }
 
 func (il *IntegerLiteral) expressionNode() {}
-func (il *IntegerLiteral) TokenLiteral() string {
+func (il *IntegerLiteral) TokenLexeme() string {
 	return il.Token.Lexeme
 }
 
@@ -158,18 +158,32 @@ func (il *IntegerLiteral) String() string {
 	return il.Token.Lexeme
 }
 
-type Boolean struct {
+type BooleanLiteral struct {
 	Token token.Token
 	Value bool
 }
 
-func (b *Boolean) expressionNode() {}
-func (b *Boolean) TokenLiteral() string {
-	return b.Token.Lexeme
+func (bl *BooleanLiteral) expressionNode() {}
+func (bl *BooleanLiteral) TokenLexeme() string {
+	return bl.Token.Lexeme
 }
 
-func (b *Boolean) String() string {
-	return b.Token.Lexeme
+func (bl *BooleanLiteral) String() string {
+	return bl.Token.Lexeme
+}
+
+type StringLiteral struct {
+	Token token.Token
+	Value string
+}
+
+func (sl *StringLiteral) expressionNode() {}
+func (sl *StringLiteral) TokenLexeme() string {
+	return sl.Token.Lexeme
+}
+
+func (sl *StringLiteral) String() string {
+	return sl.Token.Lexeme
 }
 
 type PrefixExpression struct {
@@ -179,7 +193,7 @@ type PrefixExpression struct {
 }
 
 func (pe *PrefixExpression) expressionNode() {}
-func (pe *PrefixExpression) TokenLiteral() string {
+func (pe *PrefixExpression) TokenLexeme() string {
 	return pe.Token.Lexeme
 }
 
@@ -202,7 +216,7 @@ type InfixExpression struct {
 }
 
 func (ie *InfixExpression) expressionNode() {}
-func (ie *InfixExpression) TokenLiteral() string {
+func (ie *InfixExpression) TokenLexeme() string {
 	return ie.Token.Lexeme
 }
 
@@ -228,14 +242,14 @@ type IfExpression struct {
 }
 
 func (ie *IfExpression) expressionNode() {}
-func (ie *IfExpression) TokenLiteral() string {
+func (ie *IfExpression) TokenLexeme() string {
 	return ie.Token.Lexeme
 }
 
 func (ie *IfExpression) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(ie.TokenLiteral())
+	out.WriteString(ie.TokenLexeme())
 	out.WriteString(" ")
 	out.WriteString(ie.Condition.String())
 	out.WriteString(" ")
@@ -256,7 +270,7 @@ type FunctionLiteral struct {
 }
 
 func (fl *FunctionLiteral) expressionNode() {}
-func (fl *FunctionLiteral) TokenLiteral() string {
+func (fl *FunctionLiteral) TokenLexeme() string {
 	return fl.Token.Lexeme
 }
 
@@ -268,7 +282,7 @@ func (fl *FunctionLiteral) String() string {
 		params = append(params, p.String())
 	}
 
-	out.WriteString(fl.TokenLiteral())
+	out.WriteString(fl.TokenLexeme())
 	out.WriteString("(")
 	out.WriteString(strings.Join(params, ", "))
 	out.WriteString(")")
@@ -284,7 +298,7 @@ type CallExpression struct {
 }
 
 func (ce *CallExpression) expressionNode() {}
-func (ce *CallExpression) TokenLiteral() string {
+func (ce *CallExpression) TokenLexeme() string {
 	return ce.Token.Lexeme
 }
 

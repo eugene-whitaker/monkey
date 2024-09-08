@@ -6,14 +6,14 @@ import (
 )
 
 type TokenTest struct {
-	expectedType    token.TokenType
-	expectedLiteral string
+	ttype  token.TokenType
+	lexeme string
 }
 
 func TestNextToken(t *testing.T) {
 	tests := []struct {
-		input    string
-		expected []TokenTest
+		input string
+		tests []TokenTest
 	}{
 		{
 			"let five = 5;",
@@ -237,20 +237,42 @@ func TestNextToken(t *testing.T) {
 				{token.EOF, ""},
 			},
 		},
+		{
+			"let string = \"chars\";",
+			[]TokenTest{
+				{token.LET, "let"},
+				{token.IDENT, "string"},
+				{token.ASSIGN, "="},
+				{token.STRING, "chars"},
+				{token.SEMICOLON, ";"},
+				{token.EOF, ""},
+			},
+		},
+		{
+			"let string = \"s p a c e\";",
+			[]TokenTest{
+				{token.LET, "let"},
+				{token.IDENT, "string"},
+				{token.ASSIGN, "="},
+				{token.STRING, "s p a c e"},
+				{token.SEMICOLON, ";"},
+				{token.EOF, ""},
+			},
+		},
 	}
 
 	for i, tt := range tests {
 		l := NewLexer(tt.input)
 
-		for j, expected := range tt.expected {
+		for j, expected := range tt.tests {
 			actual := l.NextToken()
 
-			if expected.expectedType != actual.Type {
-				t.Fatalf("tests[%d][%d] ==> expected: %q actual: %q", i, j, expected.expectedType, actual.Type)
+			if expected.ttype != actual.Type {
+				t.Fatalf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, tt.input, expected.ttype, actual.Type)
 			}
 
-			if expected.expectedLiteral != actual.Lexeme {
-				t.Fatalf("tests[%d][%d] ==> expected: %q actual: %q", i, j, expected.expectedLiteral, actual.Lexeme)
+			if expected.lexeme != actual.Lexeme {
+				t.Fatalf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, tt.input, expected.lexeme, actual.Lexeme)
 			}
 		}
 	}
