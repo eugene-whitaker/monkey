@@ -29,6 +29,12 @@ type ReturnValueTest struct {
 
 func (rvt ReturnValueTest) object() {}
 
+type ErrorTest struct {
+	message string
+}
+
+func (et ErrorTest) object() {}
+
 func TestEval(t *testing.T) {
 	tests := []struct {
 		input string
@@ -252,6 +258,48 @@ func TestEval(t *testing.T) {
 				IntegerTest(10),
 			},
 		},
+		{
+			"5 + true;",
+			ErrorTest{
+				"unknown operation: INTEGER + BOOLEAN",
+			},
+		},
+		{
+			"5 + true; 5;",
+			ErrorTest{
+				"unknown operation: INTEGER + BOOLEAN",
+			},
+		},
+		{
+			"-true",
+			ErrorTest{
+				"unknown operation: -BOOLEAN",
+			},
+		},
+		{
+			"true + false;",
+			ErrorTest{
+				"unknown operation: BOOLEAN + BOOLEAN",
+			},
+		},
+		{
+			"5; true + false; 5",
+			ErrorTest{
+				"unknown operation: BOOLEAN + BOOLEAN",
+			},
+		},
+		{
+			"if (10 > 1) { true + false; }",
+			ErrorTest{
+				"unknown operation: BOOLEAN + BOOLEAN",
+			},
+		},
+		{
+			"if (10 > 1) { if (10 > 1) { return true + false; } return 1; }",
+			ErrorTest{
+				"unknown operation: BOOLEAN + BOOLEAN",
+			},
+		},
 	}
 
 	for i, tt := range tests {
@@ -276,6 +324,8 @@ func testObject(t *testing.T, index int, input string, obj object.Object, test O
 		return testNull(t, index, input, obj)
 	case ReturnValueTest:
 		return testReturnValue(t, index, input, obj, test.test)
+	case ErrorTest:
+		return testError(t, index, input, obj, test.message)
 	}
 	t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", index, input, test)
 	return false
@@ -321,13 +371,22 @@ func testNull(t *testing.T, index int, input string, obj object.Object) bool {
 }
 
 func testReturnValue(t *testing.T, index int, input string, obj object.Object, test ObjectTest) bool {
-	/*returnValue, ok := obj.(*object.ReturnValue)
-	if !ok {
-		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.ReturnValue{}, obj)
-		return false
-	}*/
-
 	if !testObject(t, index, input, obj, test) {
+		return false
+	}
+
+	return true
+}
+
+func testError(t *testing.T, index int, input string, obj object.Object, msg string) bool {
+	result, ok := obj.(*object.Error)
+	if !ok {
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Error{}, obj)
+		return false
+	}
+
+	if msg != result.Message {
+		t.Errorf("test[%d] - %q - result.Value ==> expected: %q actual: %q", index, input, msg, result.Message)
 		return false
 	}
 
