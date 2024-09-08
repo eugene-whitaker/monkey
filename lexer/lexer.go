@@ -10,7 +10,7 @@ type Lexer struct {
 	current int
 }
 
-func New(input string) *Lexer {
+func NewLexer(input string) *Lexer {
 	return &Lexer{
 		input:   input,
 		ch:      0,

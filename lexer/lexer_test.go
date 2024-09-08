@@ -240,7 +240,7 @@ func TestNextToken(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		l := New(tt.input)
+		l := NewLexer(tt.input)
 
 		for j, expected := range tt.expected {
 			actual := l.NextToken()

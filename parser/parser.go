@@ -50,7 +50,7 @@ var precedences = map[token.TokenType]int{
 	token.LPAREN:   CALL,
 }
 
-func New(l *lexer.Lexer) *Parser {
+func NewParser(l *lexer.Lexer) *Parser {
 	p := &Parser{
 		l: l,
 	}

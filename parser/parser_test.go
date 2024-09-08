@@ -986,8 +986,8 @@ func TestParseProgram(t *testing.T) {
 }
 
 func testProgram(t *testing.T, index int, input string, precedence string, tests []StatementTest) bool {
-	l := lexer.New(input)
-	p := New(l)
+	l := lexer.NewLexer(input)
+	p := NewParser(l)
 	program := p.ParseProgram()
 
 	if 0 != len(p.Errors()) {

@@ -41,191 +41,191 @@ func TestEval(t *testing.T) {
 		test  ObjectTest
 	}{
 		{
-			"5",
+			"5;",
 			IntegerTest(5),
 		},
 		{
-			"10",
+			"10;",
 			IntegerTest(10),
 		},
 		{
-			"-5",
+			"-5;",
 			IntegerTest(-5),
 		},
 		{
-			"-10",
+			"-10;",
 			IntegerTest(-10),
 		},
 		{
-			"5 + 5 + 5 + 5 - 10",
+			"5 + 5 + 5 + 5 - 10;",
 			IntegerTest(10),
 		},
 		{
-			"2 * 2 * 2 * 2 * 2",
+			"2 * 2 * 2 * 2 * 2;",
 			IntegerTest(32),
 		},
 		{
-			"-50 + 100 + -50",
+			"-50 + 100 + -50;",
 			IntegerTest(0),
 		},
 		{
-			"5 * 2 + 10",
+			"5 * 2 + 10;",
 			IntegerTest(20),
 		},
 		{
-			"5 + 2 * 10",
+			"5 + 2 * 10;",
 			IntegerTest(25),
 		},
 		{
-			"20 + 2 * -10",
+			"20 + 2 * -10;",
 			IntegerTest(0),
 		},
 		{
-			"50 / 2 * 2 + 10",
+			"50 / 2 * 2 + 10;",
 			IntegerTest(60),
 		},
 		{
-			"2 * (5 + 10)",
+			"2 * (5 + 10);",
 			IntegerTest(30),
 		},
 		{
-			"3 * 3 * 3 + 10",
+			"3 * 3 * 3 + 10;",
 			IntegerTest(37),
 		},
 		{
-			"3 * (3 * 3) + 10",
+			"3 * (3 * 3) + 10;",
 			IntegerTest(37),
 		},
 		{
-			"(5 + 10 * 2 + 15 / 3) * 2 + -10",
+			"(5 + 10 * 2 + 15 / 3) * 2 + -10;",
 			IntegerTest(50),
 		},
 		{
-			"true",
+			"true;",
 			BooleanTest(true),
 		},
 		{
-			"false",
+			"false;",
 			BooleanTest(false),
 		},
 		{
-			"1 < 2",
-			BooleanTest(true),
-		},
-		{
-			"1 > 2",
+			"!true;",
 			BooleanTest(false),
 		},
 		{
-			"1 < 1",
+			"!false;",
+			BooleanTest(true),
+		},
+		{
+			"!5;",
 			BooleanTest(false),
 		},
 		{
-			"1 > 1",
+			"!!true;",
+			BooleanTest(true),
+		},
+		{
+			"!!false;",
 			BooleanTest(false),
 		},
 		{
-			"1 == 1",
+			"!!5;",
 			BooleanTest(true),
 		},
 		{
-			"1 != 1",
+			"1 < 2;",
+			BooleanTest(true),
+		},
+		{
+			"1 > 2;",
 			BooleanTest(false),
 		},
 		{
-			"1 == 2",
+			"1 < 1;",
 			BooleanTest(false),
 		},
 		{
-			"1 != 2",
-			BooleanTest(true),
-		},
-		{
-			"true == true",
-			BooleanTest(true),
-		},
-		{
-			"false == false",
-			BooleanTest(true),
-		},
-		{
-			"true == false",
+			"1 > 1;",
 			BooleanTest(false),
 		},
 		{
-			"true != false",
+			"1 == 1;",
 			BooleanTest(true),
 		},
 		{
-			"false != true",
-			BooleanTest(true),
-		},
-		{
-			"(1 < 2) == true",
-			BooleanTest(true),
-		},
-		{
-			"(1 < 2) == false",
+			"1 != 1;",
 			BooleanTest(false),
 		},
 		{
-			"(1 > 2) == true",
+			"1 == 2;",
 			BooleanTest(false),
 		},
 		{
-			"(1 > 2) == false",
+			"1 != 2;",
 			BooleanTest(true),
 		},
 		{
-			"!true",
+			"true == true;",
+			BooleanTest(true),
+		},
+		{
+			"false == false;",
+			BooleanTest(true),
+		},
+		{
+			"true == false;",
 			BooleanTest(false),
 		},
 		{
-			"!false",
+			"true != false;",
 			BooleanTest(true),
 		},
 		{
-			"!5",
+			"false != true;",
+			BooleanTest(true),
+		},
+		{
+			"(1 < 2) == true;",
+			BooleanTest(true),
+		},
+		{
+			"(1 < 2) == false;",
 			BooleanTest(false),
 		},
 		{
-			"!!true",
-			BooleanTest(true),
-		},
-		{
-			"!!false",
+			"(1 > 2) == true;",
 			BooleanTest(false),
 		},
 		{
-			"!!5",
+			"(1 > 2) == false;",
 			BooleanTest(true),
 		},
 		{
-			"if (true) { 10 }",
+			"if (true) { 10 };",
 			IntegerTest(10),
 		},
 		{
-			"if (false) { 10 }",
+			"if (false) { 10 };",
 			NullTest{},
 		},
 		{
-			"if (1) { 10 }",
+			"if (1) { 10 };",
 			IntegerTest(10),
 		},
 		{
-			"if (1 < 2) { 10 }",
+			"if (1 < 2) { 10 };",
 			IntegerTest(10),
 		},
 		{
-			"if (1 > 2) { 10 }",
+			"if (1 > 2) { 10 };",
 			NullTest{},
 		},
 		{
-			"if (1 > 2) { 10 } else { 20 }",
+			"if (1 > 2) { 10 } else { 20 };",
 			IntegerTest(20),
 		},
 		{
-			"if (1 < 2) { 10 } else { 20 }",
+			"if (1 < 2) { 10 } else { 20 };",
 			IntegerTest(10),
 		},
 		{
@@ -253,7 +253,7 @@ func TestEval(t *testing.T) {
 			},
 		},
 		{
-			"if (10 > 1) { if (10 > 1) { return 10; }; return 1; }",
+			"if (10 > 1) { if (10 > 1) { return 10; }; return 1; };",
 			ReturnValueTest{
 				IntegerTest(10),
 			},
@@ -271,7 +271,7 @@ func TestEval(t *testing.T) {
 			},
 		},
 		{
-			"-true",
+			"-true;",
 			ErrorTest{
 				"unknown operation: -BOOLEAN",
 			},
@@ -283,30 +283,53 @@ func TestEval(t *testing.T) {
 			},
 		},
 		{
-			"5; true + false; 5",
+			"5; true + false; 5;",
 			ErrorTest{
 				"unknown operation: BOOLEAN + BOOLEAN",
 			},
 		},
 		{
-			"if (10 > 1) { true + false; }",
+			"if (10 > 1) { true + false; };",
 			ErrorTest{
 				"unknown operation: BOOLEAN + BOOLEAN",
 			},
 		},
 		{
-			"if (10 > 1) { if (10 > 1) { return true + false; } return 1; }",
+			"if (10 > 1) { if (10 > 1) { return true + false; } return 1; };",
 			ErrorTest{
 				"unknown operation: BOOLEAN + BOOLEAN",
 			},
+		},
+		{
+			"ident",
+			ErrorTest{
+				"unknown identifier: ident",
+			},
+		},
+		{
+			"let a = 5; a;",
+			IntegerTest(5),
+		},
+		{
+			"let a = 5 * 5; a;",
+			IntegerTest(25),
+		},
+		{
+			"let a = 5; let b = a; b;",
+			IntegerTest(5),
+		},
+		{
+			"let a = 5; let b = a; let c = a + b + 5; c;",
+			IntegerTest(15),
 		},
 	}
 
 	for i, tt := range tests {
-		l := lexer.New(tt.input)
-		p := parser.New(l)
+		l := lexer.NewLexer(tt.input)
+		p := parser.NewParser(l)
 		program := p.ParseProgram()
-		eval := Eval(program)
+		env := object.NewEnvironment()
+		eval := Eval(program, env)
 
 		if !testObject(t, i, tt.input, eval, tt.test) {
 			return
