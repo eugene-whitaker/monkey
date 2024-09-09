@@ -172,6 +172,34 @@ func (bl *BooleanLiteral) String() string {
 	return bl.Token.Lexeme
 }
 
+type FunctionLiteral struct {
+	Token      token.Token // The 'fn' token
+	Parameters []*Identifier
+	Body       *BlockStatement
+}
+
+func (fl *FunctionLiteral) expressionNode() {}
+func (fl *FunctionLiteral) TokenLexeme() string {
+	return fl.Token.Lexeme
+}
+
+func (fl *FunctionLiteral) String() string {
+	var out bytes.Buffer
+
+	params := []string{}
+	for _, p := range fl.Parameters {
+		params = append(params, p.String())
+	}
+
+	out.WriteString(fl.TokenLexeme())
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(")")
+	out.WriteString(fl.Body.String())
+
+	return out.String()
+}
+
 type StringLiteral struct {
 	Token token.Token
 	Value string
@@ -184,6 +212,31 @@ func (sl *StringLiteral) TokenLexeme() string {
 
 func (sl *StringLiteral) String() string {
 	return sl.Token.Lexeme
+}
+
+type ArrayLiteral struct {
+	Token    token.Token // The '[' token
+	Elements []Expression
+}
+
+func (al *ArrayLiteral) expressionNode() {}
+func (al *ArrayLiteral) TokenLexeme() string {
+	return al.Token.Lexeme
+}
+
+func (al *ArrayLiteral) String() string {
+	var out bytes.Buffer
+
+	elems := []string{}
+	for _, elem := range al.Elements {
+		elems = append(elems, elem.String())
+	}
+
+	out.WriteString("[")
+	out.WriteString(strings.Join(elems, ", "))
+	out.WriteString("]")
+
+	return out.String()
 }
 
 type PrefixExpression struct {
@@ -263,34 +316,6 @@ func (ie *IfExpression) String() string {
 	return out.String()
 }
 
-type FunctionLiteral struct {
-	Token      token.Token // The 'fn' token
-	Parameters []*Identifier
-	Body       *BlockStatement
-}
-
-func (fl *FunctionLiteral) expressionNode() {}
-func (fl *FunctionLiteral) TokenLexeme() string {
-	return fl.Token.Lexeme
-}
-
-func (fl *FunctionLiteral) String() string {
-	var out bytes.Buffer
-
-	params := []string{}
-	for _, p := range fl.Parameters {
-		params = append(params, p.String())
-	}
-
-	out.WriteString(fl.TokenLexeme())
-	out.WriteString("(")
-	out.WriteString(strings.Join(params, ", "))
-	out.WriteString(")")
-	out.WriteString(fl.Body.String())
-
-	return out.String()
-}
-
 type CallExpression struct {
 	Token      token.Token // The '(' token
 	Function   Expression  // Identifier or FunctionLiteral
@@ -314,6 +339,29 @@ func (ce *CallExpression) String() string {
 	out.WriteString("(")
 	out.WriteString(strings.Join(args, ", "))
 	out.WriteString(")")
+
+	return out.String()
+}
+
+type IndexExpression struct {
+	Token token.Token // The '[' token
+	Array Expression
+	Index Expression
+}
+
+func (ie *IndexExpression) expressionNode() {}
+func (ie *IndexExpression) TokenLexeme() string {
+	return ie.Token.Lexeme
+}
+
+func (ie *IndexExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(ie.Array.String())
+	out.WriteString("[")
+	out.WriteString(ie.Index.String())
+	out.WriteString("])")
 
 	return out.String()
 }

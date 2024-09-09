@@ -70,9 +70,13 @@ func (l *Lexer) NextToken() token.Token {
 			return l.emit(token.LBRACE)
 		case '}':
 			return l.emit(token.RBRACE)
-		case ' ', '\t', '\r', '\n':
+		case '[':
+			return l.emit(token.LBRACKET)
+		case ']':
+			return l.emit(token.RBRACKET)
 		case '"':
 			return l.string()
+		case ' ', '\t', '\r', '\n':
 		default:
 			if isLetter(l.ch) {
 				literal := l.identifier()

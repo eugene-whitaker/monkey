@@ -16,9 +16,12 @@ var (
 	FALSE = &object.Boolean{
 		Value: false,
 	}
-	NULL  = &object.Null{}
-	EMPTY = &object.String{
+	NULL         = &object.Null{}
+	EMPTY_STRING = &object.String{
 		Value: "",
+	}
+	EMPTY_ARRAY = &object.Array{
+		Elements: []object.Object{},
 	}
 )
 
@@ -40,18 +43,22 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return evalIntegerLiteral(node)
 	case *ast.BooleanLiteral:
 		return evalBooleanLiteral(node)
+	case *ast.FunctionLiteral:
+		return evalFunctionLiteral(node, env)
 	case *ast.StringLiteral:
 		return evalStringLiteral(node)
+	case *ast.ArrayLiteral:
+		return evalArrayLiteral(node, env)
 	case *ast.PrefixExpression:
 		return evalPrefixExpression(node, env)
 	case *ast.InfixExpression:
 		return evalInfixExpression(node, env)
 	case *ast.IfExpression:
 		return evalIfExpression(node, env)
-	case *ast.FunctionLiteral:
-		return evalFunctionLiteral(node, env)
 	case *ast.CallExpression:
 		return evalCallExpression(node, env)
+	case *ast.IndexExpression:
+		return evalIndexExpression(node, env)
 	}
 
 	return nil
@@ -141,8 +148,32 @@ func evalBooleanLiteral(node *ast.BooleanLiteral) object.Object {
 	return toBooleanObject(node.Value)
 }
 
+func evalFunctionLiteral(node *ast.FunctionLiteral, env *object.Environment) object.Object {
+	return &object.Function{
+		Parameters: node.Parameters,
+		Body:       node.Body,
+		Env:        env,
+	}
+}
+
 func evalStringLiteral(node *ast.StringLiteral) object.Object {
 	return toStringObject(node.Value)
+}
+
+func evalArrayLiteral(node *ast.ArrayLiteral, env *object.Environment) object.Object {
+	elems := []object.Object{}
+
+	for _, elem := range node.Elements {
+		result := Eval(elem, env)
+
+		if isError(result) {
+			return result
+		}
+
+		elems = append(elems, result)
+	}
+
+	return toArrayObject(elems)
 }
 
 func evalPrefixExpression(node *ast.PrefixExpression, env *object.Environment) object.Object {
@@ -198,7 +229,7 @@ func evalNullPrefixExpression(operator string) object.Object {
 func evalStringPrefixExpression(operator string, right *object.String) object.Object {
 	switch operator {
 	case "!":
-		return toBooleanObject(right == EMPTY)
+		return toBooleanObject(right == EMPTY_STRING)
 	default:
 		return toErrorObject("unknown operation: %s%s", operator, object.STRING_OBJECT)
 	}
@@ -305,14 +336,6 @@ func evalIfExpression(node *ast.IfExpression, env *object.Environment) object.Ob
 	return NULL
 }
 
-func evalFunctionLiteral(node *ast.FunctionLiteral, env *object.Environment) object.Object {
-	return &object.Function{
-		Parameters: node.Parameters,
-		Body:       node.Body,
-		Env:        env,
-	}
-}
-
 func evalCallExpression(node *ast.CallExpression, env *object.Environment) object.Object {
 	function := Eval(node.Function, env)
 
@@ -354,6 +377,34 @@ func evalCallExpression(node *ast.CallExpression, env *object.Environment) objec
 	}
 }
 
+func evalIndexExpression(node *ast.IndexExpression, env *object.Environment) object.Object {
+	array := Eval(node.Array, env)
+
+	if isError(array) {
+		return array
+	}
+
+	index := Eval(node.Index, env)
+
+	if isError(index) {
+		return index
+	}
+
+	switch {
+	case array.Type() == object.ARRAY_OBJECT && index.Type() == object.INTEGER_OBJECT:
+		arr := array.(*object.Array)
+		idx := index.(*object.Integer).Value
+
+		if idx < 0 || idx >= int64(len(arr.Elements)) {
+			return NULL
+		}
+
+		return arr.Elements[idx]
+	default:
+		return toErrorObject("unknown operation: %s[%s]", array.Type(), index.Type())
+	}
+}
+
 func toIntegerObject(val int64) object.Object {
 	if val == 0 {
 		return ZERO
@@ -370,7 +421,7 @@ func toBooleanObject(val bool) object.Object {
 	return FALSE
 }
 
-func toErrorObject(format string, args ...any) *object.Error {
+func toErrorObject(format string, args ...any) object.Object {
 	return &object.Error{
 		Message: fmt.Sprintf(format, args...),
 	}
@@ -378,16 +429,25 @@ func toErrorObject(format string, args ...any) *object.Error {
 
 func toStringObject(val string) object.Object {
 	if val == "" {
-		return EMPTY
+		return EMPTY_STRING
 	}
 	return &object.String{
 		Value: val,
 	}
 }
 
+func toArrayObject(elems []object.Object) object.Object {
+	if len(elems) == 0 {
+		return EMPTY_ARRAY
+	}
+	return &object.Array{
+		Elements: elems,
+	}
+}
+
 func isTruthy(obj object.Object) bool {
 	switch obj {
-	case ZERO, FALSE, NULL, EMPTY:
+	case ZERO, FALSE, NULL, EMPTY_STRING:
 		return false
 	default:
 		return true

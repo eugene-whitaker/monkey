@@ -38,6 +38,10 @@ type StringTest string
 
 func (st StringTest) object() {}
 
+type ArrayTest []ObjectTest
+
+func (at ArrayTest) object() {}
+
 func TestEval(t *testing.T) {
 	tests := []struct {
 		input string
@@ -300,6 +304,14 @@ func TestEval(t *testing.T) {
 			ErrorTest("unknown operation: STRING - STRING"),
 		},
 		{
+			"len(1)",
+			ErrorTest("invalid argument types in call to `len`: found (INTEGER) want (STRING)"),
+		},
+		{
+			"len(\"one\", \"two\")",
+			ErrorTest("invalid argument count in call to `len`: found (STRING, STRING) want (STRING)"),
+		},
+		{
 			"let a = 5; a;",
 			IntegerTest(5),
 		},
@@ -345,7 +357,7 @@ func TestEval(t *testing.T) {
 			IntegerTest(20),
 		},
 		{
-			"fn(x) { x; }(5)",
+			"fn(x) { x; }(5);",
 			IntegerTest(5),
 		},
 		{
@@ -365,24 +377,66 @@ func TestEval(t *testing.T) {
 			StringTest("hello world"),
 		},
 		{
-			"len(\"\")",
+			"len(\"\");",
 			IntegerTest(0),
 		},
 		{
-			"len(\"four\")",
+			"len(\"four\");",
 			IntegerTest(4),
 		},
 		{
-			"len(\"hello world\")",
+			"len(\"hello world\");",
 			IntegerTest(11),
 		},
 		{
-			"len(1)",
-			ErrorTest("invalid argument types in call to `len`: found (INTEGER) want (STRING)"),
+			"[1, 2 * 2, 3 + 3];",
+			ArrayTest(
+				[]ObjectTest{
+					IntegerTest(1),
+					IntegerTest(4),
+					IntegerTest(6),
+				},
+			),
 		},
 		{
-			"len(\"one\", \"two\")",
-			ErrorTest("invalid argument count in call to `len`: found (STRING, STRING) want (STRING)"),
+			"[1, 2, 3][0];",
+			IntegerTest(1),
+		},
+		{
+			"[1, 2, 3][1]",
+			IntegerTest(2),
+		},
+		{
+			"[1, 2, 3][2]",
+			IntegerTest(3),
+		},
+		{
+			"let i = 0; [1][i];",
+			IntegerTest(1),
+		},
+		{
+			"[1, 2, 3][1 + 1];",
+			IntegerTest(3),
+		},
+		{
+			"let arr = [1, 2, 3]; arr[2];",
+			IntegerTest(3),
+		},
+		{
+			"let arr = [1, 2, 3]; arr[0] + arr[1] + arr[2];",
+			IntegerTest(6),
+		},
+		{
+			"let arr = [1, 2, 3]; let i = arr[0]; arr[i]",
+			IntegerTest(2),
+		},
+		{
+			"[1, 2, 3][3]",
+			NullTest{},
+		},
+		{
+			"[1, 2, 3][-1]",
+			NullTest{},
 		},
 	}
 
@@ -399,117 +453,140 @@ func TestEval(t *testing.T) {
 	}
 }
 
-func testObject(t *testing.T, index int, input string, obj object.Object, test ObjectTest) bool {
+func testObject(t *testing.T, idx int, input string, obj object.Object, test ObjectTest) bool {
 	switch test := test.(type) {
 	case IntegerTest:
-		return testInteger(t, index, input, obj, int64(test))
+		return testInteger(t, idx, input, obj, int64(test))
 	case BooleanTest:
-		return testBoolean(t, index, input, obj, bool(test))
+		return testBoolean(t, idx, input, obj, bool(test))
 	case NullTest:
-		return testNull(t, index, input, obj)
+		return testNull(t, idx, input, obj)
 	case ErrorTest:
-		return testError(t, index, input, obj, string(test))
+		return testError(t, idx, input, obj, string(test))
 	case FunctionTest:
-		return testFunction(t, index, input, obj, test.parameters, test.body)
+		return testFunction(t, idx, input, obj, test.parameters, test.body)
 	case StringTest:
-		return testString(t, index, input, obj, string(test))
+		return testString(t, idx, input, obj, string(test))
+	case ArrayTest:
+		return testArray(t, idx, input, obj, []ObjectTest(test))
 	}
-	t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", index, input, test)
+	t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", idx, input, test)
 	return false
 }
 
-func testInteger(t *testing.T, index int, input string, obj object.Object, value int64) bool {
+func testInteger(t *testing.T, idx int, input string, obj object.Object, value int64) bool {
 	result, ok := obj.(*object.Integer)
 	if !ok {
-		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Integer{}, obj)
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", idx, input, object.Integer{}, obj)
 		return false
 	}
 
 	if value != result.Value {
-		t.Errorf("test[%d] - %q - result.Value ==> expected: %d actual: %d", index, input, value, result.Value)
+		t.Errorf("test[%d] - %q - result.Value ==> expected: %d actual: %d", idx, input, value, result.Value)
 		return false
 	}
 
 	return true
 }
 
-func testBoolean(t *testing.T, index int, input string, obj object.Object, value bool) bool {
+func testBoolean(t *testing.T, idx int, input string, obj object.Object, value bool) bool {
 	result, ok := obj.(*object.Boolean)
 	if !ok {
-		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Boolean{}, obj)
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", idx, input, object.Boolean{}, obj)
 		return false
 	}
 
 	if value != result.Value {
-		t.Errorf("test[%d] - %q - result.Value ==> expected: %t actual: %t", index, input, value, result.Value)
+		t.Errorf("test[%d] - %q - result.Value ==> expected: %t actual: %t", idx, input, value, result.Value)
 		return false
 	}
 
 	return true
 }
 
-func testNull(t *testing.T, index int, input string, obj object.Object) bool {
+func testNull(t *testing.T, idx int, input string, obj object.Object) bool {
 	if NULL != obj {
-		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Null{}, obj)
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", idx, input, object.Null{}, obj)
 		return false
 	}
 
 	return true
 }
 
-func testError(t *testing.T, index int, input string, obj object.Object, message string) bool {
+func testError(t *testing.T, idx int, input string, obj object.Object, message string) bool {
 	result, ok := obj.(*object.Error)
 	if !ok {
-		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Error{}, obj)
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", idx, input, object.Error{}, obj)
 		return false
 	}
 
 	if message != result.Message {
-		t.Errorf("test[%d] - %q - result.Message ==> expected: %q actual: %q", index, input, message, result.Message)
+		t.Errorf("test[%d] - %q - result.Message ==> expected: %q actual: %q", idx, input, message, result.Message)
 		return false
 	}
 
 	return true
 }
 
-func testFunction(t *testing.T, index int, input string, obj object.Object, parameters []string, body string) bool {
+func testFunction(t *testing.T, idx int, input string, obj object.Object, parameters []string, body string) bool {
 	result, ok := obj.(*object.Function)
 	if !ok {
-		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.Function{}, obj)
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", idx, input, object.Function{}, obj)
 		return false
 	}
 
 	if len(parameters) != len(result.Parameters) {
-		t.Errorf("test[%d] - %q - len(result.Parameters) ==> expected: %d actual: %d", index, input, len(parameters), len(result.Parameters))
+		t.Errorf("test[%d] - %q - len(result.Parameters) ==> expected: %d actual: %d", idx, input, len(parameters), len(result.Parameters))
 		return false
 	}
 
 	for i, parameter := range result.Parameters {
 		if parameters[i] != parameter.String() {
-			t.Errorf("test[%d] - %q - result.Parameters[%d].String() ==> expected: %q actual: %q", index, input, i, parameters[i], parameter)
+			t.Errorf("test[%d] - %q - result.Parameters[%d].String() ==> expected: %q actual: %q", idx, input, i, parameters[i], parameter)
 			return false
 		}
 	}
 
 	actual := result.Body.String()
 	if body != actual {
-		t.Errorf("test[%d] - %q - result.Body.String() ==> expected: %q actual: %q", index, input, body, actual)
+		t.Errorf("test[%d] - %q - result.Body.String() ==> expected: %q actual: %q", idx, input, body, actual)
 		return false
 	}
 
 	return true
 }
 
-func testString(t *testing.T, index int, input string, obj object.Object, message string) bool {
+func testString(t *testing.T, idx int, input string, obj object.Object, value string) bool {
 	result, ok := obj.(*object.String)
 	if !ok {
-		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", index, input, object.String{}, obj)
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", idx, input, object.String{}, obj)
 		return false
 	}
 
-	if message != result.Value {
-		t.Errorf("test[%d] - %q - result.Value ==> expected: %q actual: %q", index, input, message, result.Value)
+	if value != result.Value {
+		t.Errorf("test[%d] - %q - result.Value ==> expected: %q actual: %q", idx, input, value, result.Value)
 		return false
+	}
+
+	return true
+}
+
+func testArray(t *testing.T, idx int, input string, obj object.Object, tests []ObjectTest) bool {
+	result, ok := obj.(*object.Array)
+	if !ok {
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", idx, input, object.Array{}, obj)
+		return false
+	}
+
+	if len(tests) != len(result.Elements) {
+		t.Errorf("test[%d] - %q - len(result.Elements) ==> expected: %d actual: %d", idx, input, len(tests), len(result.Elements))
+		return false
+	}
+
+	for i, elem := range result.Elements {
+		if !testObject(t, idx, input, elem, tests[i]) {
+			return false
+		}
 	}
 
 	return true

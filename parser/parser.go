@@ -11,12 +11,13 @@ import (
 const (
 	_ int = iota
 	LOWEST
-	EQUALS      //==
-	LESSGREATER // > or <
-	SUM         // +
-	PRODUCT     // *
+	EQUALS      // X == X
+	LESSGREATER // X > X or X < X
+	SUM         // X + X
+	PRODUCT     // X * X
 	PREFIX      // -X or !X
-	CALL        // myFunction(X)
+	CALL        // func(X)
+	INDEX       // arr[X]
 )
 
 type (
@@ -48,6 +49,7 @@ var precedences = map[token.TokenType]int{
 	token.SLASH:    PRODUCT,
 	token.ASTERISK: PRODUCT,
 	token.LPAREN:   CALL,
+	token.LBRACKET: INDEX,
 }
 
 func NewParser(l *lexer.Lexer) *Parser {
@@ -75,6 +77,7 @@ func NewParser(l *lexer.Lexer) *Parser {
 		token.IF:       p.parseIfExpression,
 		token.FUNCTION: p.parseFunctionLiteral,
 		token.STRING:   p.parseStringLiteral,
+		token.LBRACKET: p.parseArrayLiteral,
 	}
 
 	p.infixFuncs = map[token.TokenType]infixFunc{
@@ -87,6 +90,7 @@ func NewParser(l *lexer.Lexer) *Parser {
 		token.LT:       p.parseInfixExpression,
 		token.GT:       p.parseInfixExpression,
 		token.LPAREN:   p.parseCallExpression,
+		token.LBRACKET: p.parseIndexExpression,
 	}
 
 	p.errors = []string{}
@@ -267,12 +271,45 @@ func (p *Parser) parseBooleanLiteral() ast.Expression {
 	}
 }
 
+func (p *Parser) parseFunctionLiteral() ast.Expression {
+	// defer untrace(trace("parseFunctionLiteral"))
+	lit := &ast.FunctionLiteral{
+		Token: p.tok,
+	}
+
+	if !p.expect(token.LPAREN, "expected <(> token following <fn>") {
+		return nil
+	}
+
+	lit.Parameters = p.parseFunctionParameters()
+
+	if !p.expect(token.LBRACE, "expected <{> token following <)>") {
+		return nil
+	}
+
+	lit.Body = p.parseBlockStatement()
+
+	return lit
+}
+
 func (p *Parser) parseStringLiteral() ast.Expression {
 	// defer untrace(trace("parseStringLiteral"))
 	return &ast.StringLiteral{
 		Token: p.tok,
 		Value: p.tok.Lexeme,
 	}
+}
+
+func (p *Parser) parseArrayLiteral() ast.Expression {
+	// defer untrace(trace("parseArrayLiteral"))
+	lit := &ast.ArrayLiteral{
+		Token: p.tok,
+	}
+
+	lit.Elements = p.parseArrayElements()
+
+	return lit
+
 }
 
 func (p *Parser) parsePrefixExpression() ast.Expression {
@@ -341,27 +378,6 @@ func (p *Parser) parseIfExpression() ast.Expression {
 	return exp
 }
 
-func (p *Parser) parseFunctionLiteral() ast.Expression {
-	// defer untrace(trace("parseFunctionLiteral"))
-	lit := &ast.FunctionLiteral{
-		Token: p.tok,
-	}
-
-	if !p.expect(token.LPAREN, "expected <(> token following <fn>") {
-		return nil
-	}
-
-	lit.Parameters = p.parseFunctionParameters()
-
-	if !p.expect(token.LBRACE, "expected <{> token following <)>") {
-		return nil
-	}
-
-	lit.Body = p.parseBlockStatement()
-
-	return lit
-}
-
 func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
 	// defer untrace(trace("parseCallExpression"))
 	exp := &ast.CallExpression{
@@ -370,6 +386,24 @@ func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
 	}
 
 	exp.Arguements = p.parseCallArguments()
+	return exp
+
+}
+
+func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
+	// defer untrace(trace("parseIndexExpression"))
+	exp := &ast.IndexExpression{
+		Token: p.tok,
+		Array: left,
+	}
+
+	p.advance()
+
+	exp.Index = p.parseExpression(LOWEST)
+
+	if !p.expect(token.RBRACKET, "expected <]> token following <INT>") {
+		return nil
+	}
 
 	return exp
 }
@@ -441,6 +475,30 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 	}
 
 	if !p.expect(token.RPAREN, "expected <)> token following call arguments") {
+		return nil
+	}
+
+	return args
+}
+
+func (p *Parser) parseArrayElements() []ast.Expression {
+	// defer untrace(trace("parseArrayElements"))
+	args := []ast.Expression{}
+
+	p.advance()
+	if p.tok.Type == token.RBRACKET {
+		return args
+	}
+
+	args = append(args, p.parseExpression(LOWEST))
+
+	for p.check(token.COMMA) {
+		p.advance()
+		p.advance()
+		args = append(args, p.parseExpression(LOWEST))
+	}
+
+	if !p.expect(token.RBRACKET, "expected <]> token following array elements") {
 		return nil
 	}
 
