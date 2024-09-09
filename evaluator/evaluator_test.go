@@ -293,7 +293,7 @@ func TestEval(t *testing.T) {
 		},
 		{
 			"ident",
-			ErrorTest("undefined reference to identifier: ident"),
+			ErrorTest("undefined reference: ident"),
 		},
 		{
 			"\"hello\" - \"world\"",
@@ -363,6 +363,26 @@ func TestEval(t *testing.T) {
 		{
 			"\"hello\" + \" \" + \"world\";",
 			StringTest("hello world"),
+		},
+		{
+			"len(\"\")",
+			IntegerTest(0),
+		},
+		{
+			"len(\"four\")",
+			IntegerTest(4),
+		},
+		{
+			"len(\"hello world\")",
+			IntegerTest(11),
+		},
+		{
+			"len(1)",
+			ErrorTest("invalid argument types in call to `len`: found (INTEGER) want (STRING)"),
+		},
+		{
+			"len(\"one\", \"two\")",
+			ErrorTest("invalid argument count in call to `len`: found (STRING, STRING) want (STRING)"),
 		},
 	}
 

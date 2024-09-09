@@ -126,7 +126,11 @@ func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object
 		return obj
 	}
 
-	return toErrorObject("undefined reference to identifier: %s", node.Value)
+	if builtin, ok := builtins[node.Value]; ok {
+		return builtin
+	}
+
+	return toErrorObject("undefined reference: %s", node.Value)
 }
 
 func evalIntegerLiteral(node *ast.IntegerLiteral) object.Object {
@@ -328,24 +332,26 @@ func evalCallExpression(node *ast.CallExpression, env *object.Environment) objec
 		args = append(args, result)
 	}
 
-	fn, ok := function.(*object.Function)
-	if !ok {
-		return toErrorObject("unknown call expression type: %s", function.Type())
+	switch fn := function.(type) {
+	case *object.Function:
+		enclosed := object.NewEnclosedEnvironment(fn.Env)
+
+		for i, parameter := range fn.Parameters {
+			enclosed.Set(parameter.Value, args[i])
+		}
+
+		result := Eval(fn.Body, enclosed)
+
+		if returnValue, ok := result.(*object.ReturnValue); ok {
+			return returnValue.Value
+		}
+
+		return result
+	case *object.Builtin:
+		return fn.Fn(args...)
+	default:
+		return toErrorObject("unknown operation: %s()", function.Type())
 	}
-
-	enclosed := object.NewEnclosedEnvironment(fn.Env)
-
-	for i, parameter := range fn.Parameters {
-		enclosed.Set(parameter.Value, args[i])
-	}
-
-	result := Eval(fn.Body, enclosed)
-
-	if returnValue, ok := result.(*object.ReturnValue); ok {
-		return returnValue.Value
-	}
-
-	return result
 }
 
 func toIntegerObject(val int64) object.Object {
