@@ -183,15 +183,17 @@ func evalPrefixExpression(node *ast.PrefixExpression, env *object.Environment) o
 		return right
 	}
 
-	switch {
-	case right.Type() == object.INTEGER_OBJECT:
+	switch right.Type() {
+	case object.INTEGER_OBJECT:
 		return evalIntegerPrefixExpression(node.Operator, right.(*object.Integer))
-	case right.Type() == object.BOOLEAN_OBJECT:
+	case object.BOOLEAN_OBJECT:
 		return evalBooleanPrefixExpression(node.Operator, right.(*object.Boolean))
-	case right.Type() == object.NULL_OBJECT:
+	case object.NULL_OBJECT:
 		return evalNullPrefixExpression(node.Operator)
-	case right.Type() == object.STRING_OBJECT:
+	case object.STRING_OBJECT:
 		return evalStringPrefixExpression(node.Operator, right.(*object.String))
+	case object.ARRAY_OBJECT:
+		return evalArrayPrefixExpression(node.Operator, right.(*object.Array))
 	default:
 		return toErrorObject("unknown operation: %s%s", node.Operator, right.Type())
 	}
@@ -235,6 +237,15 @@ func evalStringPrefixExpression(operator string, right *object.String) object.Ob
 	}
 }
 
+func evalArrayPrefixExpression(operator string, right *object.Array) object.Object {
+	switch operator {
+	case "!":
+		return toBooleanObject(right == EMPTY_ARRAY)
+	default:
+		return toErrorObject("unknown operation: %s%s", operator, object.ARRAY_OBJECT)
+	}
+}
+
 func evalInfixExpression(node *ast.InfixExpression, env *object.Environment) object.Object {
 	left := Eval(node.Left, env)
 
@@ -255,8 +266,12 @@ func evalInfixExpression(node *ast.InfixExpression, env *object.Environment) obj
 		return evalBooleanInfixExpression(node.Operator, left.(*object.Boolean), right.(*object.Boolean))
 	case left.Type() == object.NULL_OBJECT && right.Type() == object.NULL_OBJECT:
 		return evalNullInfixExpression(node.Operator)
+	case left.Type() == object.FUNCTION_OBJECT && right.Type() == object.FUNCTION_OBJECT:
+		return evalFunctionInfixExpression(node.Operator, left.(*object.Function), right.(*object.Function))
 	case left.Type() == object.STRING_OBJECT && right.Type() == object.STRING_OBJECT:
 		return evalStringInfixExpression(node.Operator, left.(*object.String), right.(*object.String))
+	case left.Type() == object.ARRAY_OBJECT && right.Type() == object.ARRAY_OBJECT:
+		return evalArrayInfixExpression(node.Operator, left.(*object.Array), right.(*object.Array))
 	default:
 		return toErrorObject("unknown operation: %s %s %s", left.Type(), node.Operator, right.Type())
 	}
@@ -307,6 +322,17 @@ func evalNullInfixExpression(operator string) object.Object {
 	}
 }
 
+func evalFunctionInfixExpression(operator string, left, right *object.Function) object.Object {
+	switch operator {
+	case "==":
+		return toBooleanObject(left == right)
+	case "!=":
+		return toBooleanObject(left != right)
+	default:
+		return toErrorObject("unknown operation: %s %s %s", object.FUNCTION_OBJECT, operator, object.FUNCTION_OBJECT)
+	}
+}
+
 func evalStringInfixExpression(operator string, left, right *object.String) object.Object {
 	switch operator {
 	case "+":
@@ -317,6 +343,17 @@ func evalStringInfixExpression(operator string, left, right *object.String) obje
 		return toBooleanObject(left.Value != right.Value)
 	default:
 		return toErrorObject("unknown operation: %s %s %s", object.STRING_OBJECT, operator, object.STRING_OBJECT)
+	}
+}
+
+func evalArrayInfixExpression(operator string, left, right *object.Array) object.Object {
+	switch operator {
+	case "==":
+		return toBooleanObject(isArrayEqual(left, right))
+	case "!=":
+		return toBooleanObject(!isArrayEqual(left, right))
+	default:
+		return toErrorObject("unknown operation: %s %s %s", object.ARRAY_OBJECT, operator, object.ARRAY_OBJECT)
 	}
 }
 
@@ -395,11 +432,10 @@ func evalIndexExpression(node *ast.IndexExpression, env *object.Environment) obj
 		arr := array.(*object.Array)
 		idx := index.(*object.Integer).Value
 
-		if idx < 0 || idx >= int64(len(arr.Elements)) {
-			return NULL
+		if idx >= 0 || idx < int64(len(arr.Elements)) {
+			return arr.Elements[idx]
 		}
-
-		return arr.Elements[idx]
+		return NULL
 	default:
 		return toErrorObject("unknown operation: %s[%s]", array.Type(), index.Type())
 	}
@@ -447,7 +483,7 @@ func toArrayObject(elems []object.Object) object.Object {
 
 func isTruthy(obj object.Object) bool {
 	switch obj {
-	case ZERO, FALSE, NULL, EMPTY_STRING:
+	case ZERO, FALSE, NULL, EMPTY_STRING, EMPTY_ARRAY:
 		return false
 	default:
 		return true
@@ -456,4 +492,47 @@ func isTruthy(obj object.Object) bool {
 
 func isError(obj object.Object) bool {
 	return obj != nil && obj.Type() == object.ERROR_OBJECT
+}
+
+func isArrayEqual(left, right *object.Array) bool {
+	if len(left.Elements) != len(right.Elements) {
+		return false
+	}
+
+	for i, elem := range left.Elements {
+		switch left := elem.(type) {
+		case *object.Integer:
+			right, ok := right.Elements[i].(*object.Integer)
+			if !ok || left.Value != right.Value {
+				return false
+			}
+		case *object.Boolean:
+			right, ok := right.Elements[i].(*object.Boolean)
+			if !ok || left != right {
+				return false
+			}
+		case *object.Null:
+			if _, ok := right.Elements[i].(*object.Null); !ok {
+				return false
+			}
+		case *object.Function:
+			right, ok := right.Elements[i].(*object.Function)
+			if !ok || left != right {
+				return false
+			}
+		case *object.String:
+			right, ok := right.Elements[i].(*object.String)
+			if !ok || left.Value != right.Value {
+				return false
+			}
+		case *object.Array:
+			right, ok := right.Elements[i].(*object.Array)
+			if !ok || !isArrayEqual(left, right) {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
