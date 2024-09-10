@@ -42,6 +42,10 @@ type ArrayTest []ObjectTest
 
 func (at ArrayTest) object() {}
 
+type HashTest map[object.HashKey]ObjectTest
+
+func (ht HashTest) object() {}
+
 func TestEval(t *testing.T) {
 	tests := []struct {
 		input string
@@ -304,12 +308,12 @@ func TestEval(t *testing.T) {
 			ErrorTest("unknown operation: STRING - STRING"),
 		},
 		{
-			"len(1)",
-			ErrorTest("invalid argument types in call to `len`: found (INTEGER) want (STRING)"),
+			"{\"key\": \"value\"}[fn(x) { x; }];",
+			ErrorTest("unknown operation: HASH[FUNCTION]"),
 		},
 		{
-			"len(\"one\", \"two\")",
-			ErrorTest("invalid argument count in call to `len`: found (STRING, STRING) want (STRING)"),
+			"999[1];",
+			ErrorTest("unknown operation: INTEGER[INTEGER]"),
 		},
 		{
 			"let a = 5; a;",
@@ -389,6 +393,75 @@ func TestEval(t *testing.T) {
 			IntegerTest(11),
 		},
 		{
+			"len(1)",
+			ErrorTest("invalid argument types in call to `len`: found (INTEGER) want (STRING) or (ARRAY)"),
+		},
+		{
+			"len(\"one\", \"two\")",
+			ErrorTest("invalid argument count in call to `len`: found (STRING, STRING) want (STRING) or (ARRAY)"),
+		},
+		{
+			"len([1, 2, 3])",
+			IntegerTest(3),
+		},
+		{
+			"len([])",
+			IntegerTest(0),
+		},
+		{
+			"puts(\"hello\", \"world\")",
+			NullTest{},
+		},
+		{
+			"first([1, 2, 3])",
+			IntegerTest(1),
+		},
+		{
+			"first([])",
+			NullTest{},
+		},
+		{
+			"first(1)",
+			ErrorTest("invalid argument types in call to `first`: found (INTEGER) want (ARRAY)"),
+		},
+		{
+			"last([1, 2, 3])",
+			IntegerTest(3),
+		},
+		{
+			"last([])",
+			NullTest{},
+		},
+		{
+			"last(1)",
+			ErrorTest("invalid argument types in call to `last`: found (INTEGER) want (ARRAY)"),
+		},
+		{
+			"rest([1, 2, 3])",
+			ArrayTest(
+				[]ObjectTest{
+					IntegerTest(2),
+					IntegerTest(3),
+				},
+			),
+		},
+		{
+			"rest([])",
+			NullTest{},
+		},
+		{
+			"push([], 1)",
+			ArrayTest(
+				[]ObjectTest{
+					IntegerTest(1),
+				},
+			),
+		},
+		{
+			"push(1, 1)",
+			ErrorTest("invalid argument types in call to `push`: found (INTEGER, INTEGER) want (ARRAY, ANY)"),
+		},
+		{
 			"[1, 2 * 2, 3 + 3];",
 			ArrayTest(
 				[]ObjectTest{
@@ -419,15 +492,15 @@ func TestEval(t *testing.T) {
 			IntegerTest(3),
 		},
 		{
-			"let arr = [1, 2, 3]; arr[2];",
+			"let array = [1, 2, 3]; array[2];",
 			IntegerTest(3),
 		},
 		{
-			"let arr = [1, 2, 3]; arr[0] + arr[1] + arr[2];",
+			"let array = [1, 2, 3]; array[0] + array[1] + array[2];",
 			IntegerTest(6),
 		},
 		{
-			"let arr = [1, 2, 3]; let i = arr[0]; arr[i]",
+			"let array = [1, 2, 3]; let i = array[0]; array[i]",
 			IntegerTest(2),
 		},
 		{
@@ -437,6 +510,47 @@ func TestEval(t *testing.T) {
 		{
 			"[1, 2, 3][-1]",
 			NullTest{},
+		},
+		{
+			"let two = \"two\"; {\"one\": 10 - 9, two: 1 + 1, \"thr\" + \"ee\": 6 / 2, 4: 4, true: 5, false: 6}",
+			HashTest(
+				map[object.HashKey]ObjectTest{
+					(&object.String{Value: "one"}).HashKey():   IntegerTest(1),
+					(&object.String{Value: "two"}).HashKey():   IntegerTest(2),
+					(&object.String{Value: "three"}).HashKey(): IntegerTest(3),
+					(&object.Integer{Value: 4}).HashKey():      IntegerTest(4),
+					(&object.Boolean{Value: true}).HashKey():   IntegerTest(5),
+					(&object.Boolean{Value: false}).HashKey():  IntegerTest(6),
+				},
+			),
+		},
+		{
+			"{\"foo\": 5}[\"foo\"]",
+			IntegerTest(5),
+		},
+		{
+			"{\"foo\": 5}[\"bar\"]",
+			NullTest{},
+		},
+		{
+			"let key = \"foo\"; {\"foo\": 5}[key]",
+			IntegerTest(5),
+		},
+		{
+			"{}[\"foo\"]",
+			NullTest{},
+		},
+		{
+			"{5: 5}[5]",
+			IntegerTest(5),
+		},
+		{
+			"{true: 5}[true]",
+			IntegerTest(5),
+		},
+		{
+			"{false: 5}[false]",
+			IntegerTest(5),
 		},
 	}
 
@@ -469,6 +583,8 @@ func testObject(t *testing.T, idx int, input string, obj object.Object, test Obj
 		return testString(t, idx, input, obj, string(test))
 	case ArrayTest:
 		return testArray(t, idx, input, obj, []ObjectTest(test))
+	case HashTest:
+		return testHash(t, idx, input, obj, map[object.HashKey]ObjectTest(test))
 	}
 	t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", idx, input, test)
 	return false
@@ -585,6 +701,33 @@ func testArray(t *testing.T, idx int, input string, obj object.Object, tests []O
 
 	for i, elem := range result.Elements {
 		if !testObject(t, idx, input, elem, tests[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func testHash(t *testing.T, idx int, input string, obj object.Object, tests map[object.HashKey]ObjectTest) bool {
+	result, ok := obj.(*object.Hash)
+	if !ok {
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", idx, input, object.Hash{}, obj)
+		return false
+	}
+
+	if len(tests) != len(result.Pairs) {
+		t.Errorf("test[%d] - %q - len(result.Pairs) ==> expected: %d actual: %d", idx, input, len(tests), len(result.Pairs))
+		return false
+	}
+
+	for key, value := range result.Pairs {
+		test, ok := tests[key]
+		if !ok {
+			t.Errorf("test[%d] - %q - %T(%+v) ==> expected: not <nil>", idx, input, value.Key, value.Key)
+			return false
+		}
+
+		if !testObject(t, idx, input, value.Value, test) {
 			return false
 		}
 	}

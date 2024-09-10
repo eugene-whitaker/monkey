@@ -2,7 +2,9 @@ package ast
 
 import (
 	"bytes"
+	"fmt"
 	"monkey/token"
+	"sort"
 	"strings"
 )
 
@@ -235,6 +237,40 @@ func (al *ArrayLiteral) String() string {
 	out.WriteString("[")
 	out.WriteString(strings.Join(elems, ", "))
 	out.WriteString("]")
+
+	return out.String()
+}
+
+type HashLiteral struct {
+	Token token.Token // The '{' token
+	Pairs map[Expression]Expression
+}
+
+func (hl *HashLiteral) expressionNode() {}
+func (hl *HashLiteral) TokenLexeme() string {
+	return hl.Token.Lexeme
+}
+
+func (hl *HashLiteral) String() string {
+	var out bytes.Buffer
+
+	keys := []string{}
+	keymap := make(map[string]Expression)
+	for value := range hl.Pairs {
+		key := value.String()
+		keys = append(keys, key)
+		keymap[key] = value
+	}
+	sort.Strings(keys)
+
+	pairs := []string{}
+	for _, key := range keys {
+		pairs = append(pairs, fmt.Sprintf("%s: %s", key, hl.Pairs[keymap[key]]))
+	}
+
+	out.WriteString("{")
+	out.WriteString(strings.Join(pairs, ", "))
+	out.WriteString("}")
 
 	return out.String()
 }

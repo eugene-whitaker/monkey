@@ -23,6 +23,9 @@ var (
 	EMPTY_ARRAY = &object.Array{
 		Elements: []object.Object{},
 	}
+	EMPTY_HASH = &object.Hash{
+		Pairs: make(map[object.HashKey]object.HashPair),
+	}
 )
 
 func Eval(node ast.Node, env *object.Environment) object.Object {
@@ -49,6 +52,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return evalStringLiteral(node)
 	case *ast.ArrayLiteral:
 		return evalArrayLiteral(node, env)
+	case *ast.HashLiteral:
+		return evalHashLiteral(node, env)
 	case *ast.PrefixExpression:
 		return evalPrefixExpression(node, env)
 	case *ast.InfixExpression:
@@ -176,6 +181,33 @@ func evalArrayLiteral(node *ast.ArrayLiteral, env *object.Environment) object.Ob
 	return toArrayObject(elems)
 }
 
+func evalHashLiteral(node *ast.HashLiteral, env *object.Environment) object.Object {
+	pairs := make(map[object.HashKey]object.HashPair)
+
+	for key, value := range node.Pairs {
+		key := Eval(key, env)
+
+		if isError(key) {
+			return key
+		}
+
+		hashkey, ok := key.(object.Hashable)
+		if !ok {
+			return toErrorObject("invalid type: %s is not hashable", key.Type())
+		}
+
+		value := Eval(value, env)
+
+		if isError(value) {
+			return value
+		}
+
+		pairs[hashkey.HashKey()] = object.HashPair{Key: key, Value: value}
+	}
+
+	return toHashObject(pairs)
+}
+
 func evalPrefixExpression(node *ast.PrefixExpression, env *object.Environment) object.Object {
 	right := Eval(node.Right, env)
 
@@ -194,6 +226,8 @@ func evalPrefixExpression(node *ast.PrefixExpression, env *object.Environment) o
 		return evalStringPrefixExpression(node.Operator, right.(*object.String))
 	case object.ARRAY_OBJECT:
 		return evalArrayPrefixExpression(node.Operator, right.(*object.Array))
+	case object.HASH_OBJECT:
+		return evalHashPrefixExpression(node.Operator, right.(*object.Hash))
 	default:
 		return toErrorObject("unknown operation: %s%s", node.Operator, right.Type())
 	}
@@ -246,6 +280,15 @@ func evalArrayPrefixExpression(operator string, right *object.Array) object.Obje
 	}
 }
 
+func evalHashPrefixExpression(operator string, right *object.Hash) object.Object {
+	switch operator {
+	case "!":
+		return toBooleanObject(right == EMPTY_HASH)
+	default:
+		return toErrorObject("unknown operation: %s%s", operator, object.HASH_OBJECT)
+	}
+}
+
 func evalInfixExpression(node *ast.InfixExpression, env *object.Environment) object.Object {
 	left := Eval(node.Left, env)
 
@@ -272,6 +315,8 @@ func evalInfixExpression(node *ast.InfixExpression, env *object.Environment) obj
 		return evalStringInfixExpression(node.Operator, left.(*object.String), right.(*object.String))
 	case left.Type() == object.ARRAY_OBJECT && right.Type() == object.ARRAY_OBJECT:
 		return evalArrayInfixExpression(node.Operator, left.(*object.Array), right.(*object.Array))
+	case left.Type() == object.HASH_OBJECT && right.Type() == object.HASH_OBJECT:
+		return evalHashInfixExpression(node.Operator, left.(*object.Hash), right.(*object.Hash))
 	default:
 		return toErrorObject("unknown operation: %s %s %s", left.Type(), node.Operator, right.Type())
 	}
@@ -357,6 +402,17 @@ func evalArrayInfixExpression(operator string, left, right *object.Array) object
 	}
 }
 
+func evalHashInfixExpression(operator string, left, right *object.Hash) object.Object {
+	switch operator {
+	case "==":
+		return toBooleanObject(left == right)
+	case "!=":
+		return toBooleanObject(left != right)
+	default:
+		return toErrorObject("unknown operation: %s %s %s", object.HASH_OBJECT, operator, object.HASH_OBJECT)
+	}
+}
+
 func evalIfExpression(node *ast.IfExpression, env *object.Environment) object.Object {
 	condition := Eval(node.Condition, env)
 
@@ -394,19 +450,7 @@ func evalCallExpression(node *ast.CallExpression, env *object.Environment) objec
 
 	switch fn := function.(type) {
 	case *object.Function:
-		enclosed := object.NewEnclosedEnvironment(fn.Env)
-
-		for i, parameter := range fn.Parameters {
-			enclosed.Set(parameter.Value, args[i])
-		}
-
-		result := Eval(fn.Body, enclosed)
-
-		if returnValue, ok := result.(*object.ReturnValue); ok {
-			return returnValue.Value
-		}
-
-		return result
+		return evalFunctionCallExpression(fn, args)
 	case *object.Builtin:
 		return fn.Fn(args...)
 	default:
@@ -414,11 +458,27 @@ func evalCallExpression(node *ast.CallExpression, env *object.Environment) objec
 	}
 }
 
-func evalIndexExpression(node *ast.IndexExpression, env *object.Environment) object.Object {
-	array := Eval(node.Array, env)
+func evalFunctionCallExpression(fn *object.Function, args []object.Object) object.Object {
+	enclosed := object.NewEnclosedEnvironment(fn.Env)
 
-	if isError(array) {
-		return array
+	for i, parameter := range fn.Parameters {
+		enclosed.Set(parameter.Value, args[i])
+	}
+
+	result := Eval(fn.Body, enclosed)
+
+	if returnValue, ok := result.(*object.ReturnValue); ok {
+		return returnValue.Value
+	}
+
+	return result
+}
+
+func evalIndexExpression(node *ast.IndexExpression, env *object.Environment) object.Object {
+	indexable := Eval(node.Array, env)
+
+	if isError(indexable) {
+		return indexable
 	}
 
 	index := Eval(node.Index, env)
@@ -428,17 +488,32 @@ func evalIndexExpression(node *ast.IndexExpression, env *object.Environment) obj
 	}
 
 	switch {
-	case array.Type() == object.ARRAY_OBJECT && index.Type() == object.INTEGER_OBJECT:
-		arr := array.(*object.Array)
-		idx := index.(*object.Integer).Value
-
-		if idx >= 0 || idx < int64(len(arr.Elements)) {
-			return arr.Elements[idx]
-		}
-		return NULL
+	case indexable.Type() == object.ARRAY_OBJECT && index.Type() == object.INTEGER_OBJECT:
+		return evalArrayIndexExpression(indexable.(*object.Array), index.(*object.Integer))
+	case indexable.Type() == object.HASH_OBJECT:
+		return evalHashIndexExpression(indexable.(*object.Hash), index)
 	default:
-		return toErrorObject("unknown operation: %s[%s]", array.Type(), index.Type())
+		return toErrorObject("unknown operation: %s[%s]", indexable.Type(), index.Type())
 	}
+}
+
+func evalArrayIndexExpression(array *object.Array, index *object.Integer) object.Object {
+	if index.Value >= 0 && index.Value < int64(len(array.Elements)) {
+		return array.Elements[index.Value]
+	}
+	return NULL
+}
+
+func evalHashIndexExpression(hash *object.Hash, index object.Object) object.Object {
+	hashable, ok := index.(object.Hashable)
+	if !ok {
+		return toErrorObject("unknown operation: HASH[%s]", index.Type())
+	}
+
+	if result, ok := hash.Pairs[hashable.HashKey()]; ok {
+		return result.Value
+	}
+	return NULL
 }
 
 func toIntegerObject(val int64) object.Object {
@@ -481,9 +556,18 @@ func toArrayObject(elems []object.Object) object.Object {
 	}
 }
 
+func toHashObject(pairs map[object.HashKey]object.HashPair) object.Object {
+	if len(pairs) == 0 {
+		return EMPTY_HASH
+	}
+	return &object.Hash{
+		Pairs: pairs,
+	}
+}
+
 func isTruthy(obj object.Object) bool {
 	switch obj {
-	case ZERO, FALSE, NULL, EMPTY_STRING, EMPTY_ARRAY:
+	case ZERO, FALSE, NULL, EMPTY_STRING, EMPTY_ARRAY, EMPTY_HASH:
 		return false
 	default:
 		return true

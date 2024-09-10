@@ -263,20 +263,35 @@ func TestNextToken(t *testing.T) {
 				{token.EOF, ""},
 			},
 		},
+		{
+			"let hash = {\"key\": \"value\"};",
+			[]TokenTest{
+				{token.LET, "let"},
+				{token.IDENT, "hash"},
+				{token.ASSIGN, "="},
+				{token.LBRACE, "{"},
+				{token.STRING, "key"},
+				{token.COLON, ":"},
+				{token.STRING, "value"},
+				{token.RBRACE, "}"},
+				{token.SEMICOLON, ";"},
+				{token.EOF, ""},
+			},
+		},
 	}
 
-	for i, tt := range tests {
-		l := NewLexer(tt.input)
+	for i, test := range tests {
+		l := NewLexer(test.input)
 
-		for j, expected := range tt.tests {
+		for j, expected := range test.tests {
 			actual := l.NextToken()
 
 			if expected.ttype != actual.Type {
-				t.Fatalf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, tt.input, expected.ttype, actual.Type)
+				t.Fatalf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, test.input, expected.ttype, actual.Type)
 			}
 
 			if expected.lexeme != actual.Lexeme {
-				t.Fatalf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, tt.input, expected.lexeme, actual.Lexeme)
+				t.Fatalf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, test.input, expected.lexeme, actual.Lexeme)
 			}
 		}
 	}

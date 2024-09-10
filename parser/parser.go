@@ -78,6 +78,7 @@ func NewParser(l *lexer.Lexer) *Parser {
 		token.FUNCTION: p.parseFunctionLiteral,
 		token.STRING:   p.parseStringLiteral,
 		token.LBRACKET: p.parseArrayLiteral,
+		token.LBRACE:   p.parseHashLiteral,
 	}
 
 	p.infixFuncs = map[token.TokenType]infixFunc{
@@ -312,6 +313,18 @@ func (p *Parser) parseArrayLiteral() ast.Expression {
 
 }
 
+func (p *Parser) parseHashLiteral() ast.Expression {
+	// defer untrace(trace("parseArrayLiteral"))
+	lit := &ast.HashLiteral{
+		Token: p.tok,
+	}
+
+	lit.Pairs = p.parseHashPairs()
+
+	return lit
+
+}
+
 func (p *Parser) parsePrefixExpression() ast.Expression {
 	// defer untrace(trace("parsePrefixExpression"))
 	exp := &ast.PrefixExpression{
@@ -441,6 +454,7 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 	for p.check(token.COMMA) {
 		p.advance()
 		p.advance()
+
 		idents = append(
 			idents,
 			&ast.Identifier{
@@ -471,6 +485,7 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 	for p.check(token.COMMA) {
 		p.advance()
 		p.advance()
+
 		args = append(args, p.parseExpression(LOWEST))
 	}
 
@@ -483,26 +498,72 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 
 func (p *Parser) parseArrayElements() []ast.Expression {
 	// defer untrace(trace("parseArrayElements"))
-	args := []ast.Expression{}
+	elems := []ast.Expression{}
 
 	p.advance()
 	if p.tok.Type == token.RBRACKET {
-		return args
+		return elems
 	}
 
-	args = append(args, p.parseExpression(LOWEST))
+	elems = append(elems, p.parseExpression(LOWEST))
 
 	for p.check(token.COMMA) {
 		p.advance()
 		p.advance()
-		args = append(args, p.parseExpression(LOWEST))
+
+		elems = append(elems, p.parseExpression(LOWEST))
 	}
 
 	if !p.expect(token.RBRACKET, "expected <]> token following array elements") {
 		return nil
 	}
 
-	return args
+	return elems
+}
+
+func (p *Parser) parseHashPairs() map[ast.Expression]ast.Expression {
+	// defer untrace(trace("parseHashPairs"))
+	pairs := make(map[ast.Expression]ast.Expression)
+
+	p.advance()
+	if p.tok.Type == token.RBRACE {
+		return pairs
+	}
+
+	key := p.parseExpression(LOWEST)
+
+	if !p.expect(token.COLON, "expected <:> token following hash key") {
+		return nil
+	}
+
+	p.advance()
+
+	value := p.parseExpression(LOWEST)
+
+	pairs[key] = value
+
+	for p.check(token.COMMA) {
+		p.advance()
+		p.advance()
+
+		key := p.parseExpression(LOWEST)
+
+		if !p.expect(token.COLON, "expected <:> token following hash key") {
+			return nil
+		}
+
+		p.advance()
+
+		value := p.parseExpression(LOWEST)
+
+		pairs[key] = value
+	}
+
+	if !p.expect(token.RBRACE, "expected <}> token following hash pairs") {
+		return nil
+	}
+
+	return pairs
 }
 
 func (p *Parser) advance() {

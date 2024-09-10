@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"fmt"
 	"monkey/object"
 	"strings"
 )
@@ -142,11 +143,25 @@ var builtins = map[string]*object.Builtin{
 				elements[length] = args[1]
 				return toArrayObject(elements)
 			default:
+				types := []string{}
+				for _, arg := range args {
+					types = append(types, string(arg.Type()))
+				}
+
 				return toErrorObject(
 					"invalid argument types in call to `push`: found (%s) want (ARRAY, ANY)",
-					arg.Type(),
+					strings.Join(types, ", "),
 				)
 			}
+		},
+	},
+	"puts": {
+		Fn: func(args ...object.Object) object.Object {
+			for _, arg := range args {
+				fmt.Println(arg.Inspect())
+			}
+
+			return NULL
 		},
 	},
 }

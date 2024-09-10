@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"monkey/ast"
 	"monkey/lexer"
+	"sort"
 	"testing"
 )
 
@@ -67,6 +68,13 @@ type ArrayLiteralTest []ExpressionTest
 
 func (alt ArrayLiteralTest) expression() {}
 
+type HashLiteralTest struct {
+	keys   []ExpressionTest
+	values []ExpressionTest
+}
+
+func (hlt HashLiteralTest) expression() {}
+
 type PrefixExpressionTest struct {
 	operator   string
 	rightValue ExpressionTest
@@ -111,32 +119,32 @@ func TestParseProgram(t *testing.T) {
 		tests      []StatementTest
 	}{
 		{
-			"let x = 5;",
-			"let x = 5;",
+			"let ident = 5;",
+			"let ident = 5;",
 			[]StatementTest{
 				LetStatementTest{
-					"x",
+					"ident",
 					IntegerLiteralTest(5),
 				},
 			},
 		},
 		{
-			"let y = true;",
-			"let y = true;",
+			"let ident = true;",
+			"let ident = true;",
 			[]StatementTest{
 				LetStatementTest{
-					"y",
+					"ident",
 					BooleanLiteralTest(true),
 				},
 			},
 		},
 		{
-			"let z = y;",
-			"let z = y;",
+			"let ident = value;",
+			"let ident = value;",
 			[]StatementTest{
 				LetStatementTest{
-					"z",
-					IdentifierTest("y"),
+					"ident",
+					IdentifierTest("value"),
 				},
 			},
 		},
@@ -159,20 +167,20 @@ func TestParseProgram(t *testing.T) {
 			},
 		},
 		{
-			"return x;",
-			"return x;",
+			"return ident;",
+			"return ident;",
 			[]StatementTest{
 				ReturnStatementTest{
-					IdentifierTest("x"),
+					IdentifierTest("ident"),
 				},
 			},
 		},
 		{
-			"x;",
-			"x",
+			"ident;",
+			"ident",
 			[]StatementTest{
 				ExpressionStatementTest{
-					IdentifierTest("x"),
+					IdentifierTest("ident"),
 				},
 			},
 		},
@@ -223,6 +231,30 @@ func TestParseProgram(t *testing.T) {
 					PrefixExpressionTest{
 						"-",
 						IntegerLiteralTest(15),
+					},
+				},
+			},
+		},
+		{
+			"!ident;",
+			"(!ident)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					PrefixExpressionTest{
+						"!",
+						IdentifierTest("ident"),
+					},
+				},
+			},
+		},
+		{
+			"-ident;",
+			"(-ident)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					PrefixExpressionTest{
+						"-",
+						IdentifierTest("ident"),
 					},
 				},
 			},
@@ -317,6 +349,19 @@ func TestParseProgram(t *testing.T) {
 			},
 		},
 		{
+			"5 < 5;",
+			"(5 < 5)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					InfixExpressionTest{
+						IntegerLiteralTest(5),
+						"<",
+						IntegerLiteralTest(5),
+					},
+				},
+			},
+		},
+		{
 			"5 == 5;",
 			"(5 == 5)",
 			[]StatementTest{
@@ -338,6 +383,110 @@ func TestParseProgram(t *testing.T) {
 						IntegerLiteralTest(5),
 						"!=",
 						IntegerLiteralTest(5),
+					},
+				},
+			},
+		},
+		{
+			"ident + ident;",
+			"(ident + ident)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					InfixExpressionTest{
+						IdentifierTest("ident"),
+						"+",
+						IdentifierTest("ident"),
+					},
+				},
+			},
+		},
+		{
+			"ident - ident;",
+			"(ident - ident)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					InfixExpressionTest{
+						IdentifierTest("ident"),
+						"-",
+						IdentifierTest("ident"),
+					},
+				},
+			},
+		},
+		{
+			"ident * ident;",
+			"(ident * ident)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					InfixExpressionTest{
+						IdentifierTest("ident"),
+						"*",
+						IdentifierTest("ident"),
+					},
+				},
+			},
+		},
+		{
+			"ident / ident;",
+			"(ident / ident)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					InfixExpressionTest{
+						IdentifierTest("ident"),
+						"/",
+						IdentifierTest("ident"),
+					},
+				},
+			},
+		},
+		{
+			"ident > ident;",
+			"(ident > ident)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					InfixExpressionTest{
+						IdentifierTest("ident"),
+						">",
+						IdentifierTest("ident"),
+					},
+				},
+			},
+		},
+		{
+			"ident < ident;",
+			"(ident < ident)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					InfixExpressionTest{
+						IdentifierTest("ident"),
+						"<",
+						IdentifierTest("ident"),
+					},
+				},
+			},
+		},
+		{
+			"ident == ident;",
+			"(ident == ident)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					InfixExpressionTest{
+						IdentifierTest("ident"),
+						"==",
+						IdentifierTest("ident"),
+					},
+				},
+			},
+		},
+		{
+			"ident != ident;",
+			"(ident != ident)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					InfixExpressionTest{
+						IdentifierTest("ident"),
+						"!=",
+						IdentifierTest("ident"),
 					},
 				},
 			},
@@ -501,6 +650,32 @@ func TestParseProgram(t *testing.T) {
 						},
 						&BlockStatementTest{
 							[]StatementTest{},
+						},
+					},
+				},
+			},
+		},
+		{
+			"call()",
+			"call()",
+			[]StatementTest{
+				ExpressionStatementTest{
+					CallExpressionTest{
+						IdentifierTest("call"),
+						[]ExpressionTest{},
+					},
+				},
+			},
+		},
+		{
+			"call(1)",
+			"call(1)",
+			[]StatementTest{
+				ExpressionStatementTest{
+					CallExpressionTest{
+						IdentifierTest("call"),
+						[]ExpressionTest{
+							IntegerLiteralTest(1),
 						},
 					},
 				},
@@ -863,6 +1038,31 @@ func TestParseProgram(t *testing.T) {
 			},
 		},
 		{
+			"(5 + 5) * 2 * (5 + 5)",
+			"(((5 + 5) * 2) * (5 + 5))",
+			[]StatementTest{
+				ExpressionStatementTest{
+					InfixExpressionTest{
+						InfixExpressionTest{
+							InfixExpressionTest{
+								IntegerLiteralTest(5),
+								"+",
+								IntegerLiteralTest(5),
+							},
+							"*",
+							IntegerLiteralTest(2),
+						},
+						"*",
+						InfixExpressionTest{
+							IntegerLiteralTest(5),
+							"+",
+							IntegerLiteralTest(5),
+						},
+					},
+				},
+			},
+		},
+		{
 			"-(5 + 5);",
 			"(-(5 + 5))",
 			[]StatementTest{
@@ -1102,12 +1302,12 @@ func TestParseProgram(t *testing.T) {
 			},
 		},
 		{
-			"arr[1 + 1];",
-			"(arr[(1 + 1)])",
+			"array[1 + 1];",
+			"(array[(1 + 1)])",
 			[]StatementTest{
 				ExpressionStatementTest{
 					IndexExpressionTest{
-						IdentifierTest("arr"),
+						IdentifierTest("array"),
 						InfixExpressionTest{
 							IntegerLiteralTest(1),
 							"+",
@@ -1117,10 +1317,109 @@ func TestParseProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			"{\"one\": 1, \"two\": 2, \"three\": 3};",
+			"{one: 1, three: 3, two: 2}",
+			[]StatementTest{
+				ExpressionStatementTest{
+					HashLiteralTest{
+						[]ExpressionTest{
+							StringLiteralTest("one"),
+							StringLiteralTest("three"),
+							StringLiteralTest("two"),
+						},
+						[]ExpressionTest{
+							IntegerLiteralTest(1),
+							IntegerLiteralTest(3),
+							IntegerLiteralTest(2),
+						},
+					},
+				},
+			},
+		},
+		{
+			"{};",
+			"{}",
+			[]StatementTest{
+				ExpressionStatementTest{
+					HashLiteralTest{},
+				},
+			},
+		},
+		{
+			"{\"one\": 0 + 1, \"two\": 10 - 8, \"three\": 15 / 5};",
+			"{one: (0 + 1), three: (15 / 5), two: (10 - 8)}",
+			[]StatementTest{
+				ExpressionStatementTest{
+					HashLiteralTest{
+						[]ExpressionTest{
+							StringLiteralTest("one"),
+							StringLiteralTest("three"),
+							StringLiteralTest("two"),
+						},
+						[]ExpressionTest{
+							InfixExpressionTest{
+								IntegerLiteralTest(0),
+								"+",
+								IntegerLiteralTest(1),
+							},
+							InfixExpressionTest{
+								IntegerLiteralTest(15),
+								"/",
+								IntegerLiteralTest(5),
+							},
+							InfixExpressionTest{
+								IntegerLiteralTest(10),
+								"-",
+								IntegerLiteralTest(8),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			"{1: 1, 2: 2, 3: 3};",
+			"{1: 1, 2: 2, 3: 3}",
+			[]StatementTest{
+				ExpressionStatementTest{
+					HashLiteralTest{
+						[]ExpressionTest{
+							IntegerLiteralTest(1),
+							IntegerLiteralTest(2),
+							IntegerLiteralTest(3),
+						},
+						[]ExpressionTest{
+							IntegerLiteralTest(1),
+							IntegerLiteralTest(2),
+							IntegerLiteralTest(3),
+						},
+					},
+				},
+			},
+		},
+		{
+			"{true: 1, false: 2};",
+			"{false: 2, true: 1}",
+			[]StatementTest{
+				ExpressionStatementTest{
+					HashLiteralTest{
+						[]ExpressionTest{
+							BooleanLiteralTest(false),
+							BooleanLiteralTest(true),
+						},
+						[]ExpressionTest{
+							IntegerLiteralTest(2),
+							IntegerLiteralTest(1),
+						},
+					},
+				},
+			},
+		},
 	}
 
-	for i, tt := range tests {
-		if !testProgram(t, i, tt.input, tt.precedence, tt.tests) {
+	for i, test := range tests {
+		if !testProgram(t, i, test.input, test.precedence, test.tests) {
 			return
 		}
 	}
@@ -1275,6 +1574,8 @@ func testExpression(t *testing.T, idx int, input string, exp ast.Expression, tes
 		return testStringLiteral(t, idx, input, exp, string(test))
 	case ArrayLiteralTest:
 		return testArrayLiteral(t, idx, input, exp, []ExpressionTest(test))
+	case HashLiteralTest:
+		return testHashLiteral(t, idx, input, exp, test.keys, test.values)
 	case PrefixExpressionTest:
 		return testPrefixExpression(t, idx, input, exp, test.operator, test.rightValue)
 	case InfixExpressionTest:
@@ -1414,6 +1715,52 @@ func testArrayLiteral(t *testing.T, idx int, input string, exp ast.Expression, t
 
 	for i, e := range arr.Elements {
 		if !testExpression(t, idx, input, e, tests[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func testHashLiteral(t *testing.T, idx int, input string, exp ast.Expression, keys []ExpressionTest, values []ExpressionTest) bool {
+	hash, ok := exp.(*ast.HashLiteral)
+	if !ok {
+		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.HashLiteral{}, exp)
+		return false
+	}
+
+	hashKeys := []string{}
+	keymap := make(map[string]ast.Expression)
+	for value := range hash.Pairs {
+		key := value.String()
+		hashKeys = append(hashKeys, key)
+		keymap[key] = value
+	}
+	sort.Strings(hashKeys)
+
+	hashValues := []ast.Expression{}
+	for _, key := range hashKeys {
+		hashValues = append(hashValues, hash.Pairs[keymap[key]])
+	}
+
+	if len(keys) != len(hashKeys) {
+		t.Errorf("test[%d] - %q - len(hash.Pairs) ==> expected: %d actual: %d", idx, input, len(keys), len(hashKeys))
+		return false
+	}
+
+	if len(values) != len(hashValues) {
+		t.Errorf("test[%d] - %q - len(hash.Pairs) ==> expected: %d actual: %d", idx, input, len(values), len(hashValues))
+		return false
+	}
+
+	for i, key := range hashKeys {
+		if !testExpression(t, idx, input, keymap[key], keys[i]) {
+			return false
+		}
+	}
+
+	for i, v := range hashValues {
+		if !testExpression(t, idx, input, v, values[i]) {
 			return false
 		}
 	}

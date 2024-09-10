@@ -58,6 +58,8 @@ func (l *Lexer) NextToken() token.Token {
 			return l.emit(token.LT)
 		case '>':
 			return l.emit(token.GT)
+		case ':':
+			return l.emit(token.COLON)
 		case ';':
 			return l.emit(token.SEMICOLON)
 		case ',':

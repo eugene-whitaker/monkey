@@ -29,14 +29,33 @@ func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 	env := object.NewEnvironment()
 
+	io.WriteString(out, MONKEY_FACE)
+	io.WriteString(out, "\n")
+	io.WriteString(out, "Welcome to Monkey.\n")
+	io.WriteString(out, "Type \".help\" for more information.\n")
 	for {
-		fmt.Fprintf(out, ">> ")
+		fmt.Fprintf(out, "> ")
 		scanned := scanner.Scan()
 		if !scanned {
 			return
 		}
 
-		run(scanner.Text(), out, env)
+		bytes := scanner.Bytes()
+		length := len(bytes)
+		if length > 0 {
+			line := string(bytes)
+			if bytes[0] == '.' {
+				switch line {
+				case ".help":
+					io.WriteString(out, ".help    Print this help message\n")
+					io.WriteString(out, ".exit    Exit the REPL\n")
+				case ".exit":
+					os.Exit(0)
+				}
+			} else {
+				run(line, out, env)
+			}
+		}
 	}
 }
 
@@ -57,12 +76,12 @@ func run(input string, out io.Writer, env *object.Environment) {
 
 	program := p.ParseProgram()
 	if len(p.Errors()) != 0 {
-		io.WriteString(out, MONKEY_FACE)
-		io.WriteString(out, "parser errors:\n")
 		for _, msg := range p.Errors() {
+			io.WriteString(out, "parser errors:")
 			io.WriteString(out, msg)
 			io.WriteString(out, "\n")
 		}
+		return
 	}
 
 	evaluated := evaluator.Eval(program, env)
