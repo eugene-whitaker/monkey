@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"monkey/ast"
 	"monkey/lexer"
-	"sort"
 	"testing"
 )
 
@@ -68,10 +67,7 @@ type ArrayLiteralTest []ExpressionTest
 
 func (alt ArrayLiteralTest) expression() {}
 
-type HashLiteralTest struct {
-	keys   []ExpressionTest
-	values []ExpressionTest
-}
+type HashLiteralTest map[any]ExpressionTest
 
 func (hlt HashLiteralTest) expression() {}
 
@@ -1319,20 +1315,13 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			"{\"one\": 1, \"two\": 2, \"three\": 3};",
-			"{one: 1, three: 3, two: 2}",
+			"{one:1, two:2, three:3}",
 			[]StatementTest{
 				ExpressionStatementTest{
 					HashLiteralTest{
-						[]ExpressionTest{
-							StringLiteralTest("one"),
-							StringLiteralTest("three"),
-							StringLiteralTest("two"),
-						},
-						[]ExpressionTest{
-							IntegerLiteralTest(1),
-							IntegerLiteralTest(3),
-							IntegerLiteralTest(2),
-						},
+						"one":   IntegerLiteralTest(1),
+						"two":   IntegerLiteralTest(2),
+						"three": IntegerLiteralTest(3),
 					},
 				},
 			},
@@ -1348,31 +1337,24 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			"{\"one\": 0 + 1, \"two\": 10 - 8, \"three\": 15 / 5};",
-			"{one: (0 + 1), three: (15 / 5), two: (10 - 8)}",
+			"{one:(0 + 1), two:(10 - 8), three:(15 / 5)}",
 			[]StatementTest{
 				ExpressionStatementTest{
 					HashLiteralTest{
-						[]ExpressionTest{
-							StringLiteralTest("one"),
-							StringLiteralTest("three"),
-							StringLiteralTest("two"),
+						"one": InfixExpressionTest{
+							IntegerLiteralTest(0),
+							"+",
+							IntegerLiteralTest(1),
 						},
-						[]ExpressionTest{
-							InfixExpressionTest{
-								IntegerLiteralTest(0),
-								"+",
-								IntegerLiteralTest(1),
-							},
-							InfixExpressionTest{
-								IntegerLiteralTest(15),
-								"/",
-								IntegerLiteralTest(5),
-							},
-							InfixExpressionTest{
-								IntegerLiteralTest(10),
-								"-",
-								IntegerLiteralTest(8),
-							},
+						"two": InfixExpressionTest{
+							IntegerLiteralTest(10),
+							"-",
+							IntegerLiteralTest(8),
+						},
+						"three": InfixExpressionTest{
+							IntegerLiteralTest(15),
+							"/",
+							IntegerLiteralTest(5),
 						},
 					},
 				},
@@ -1380,38 +1362,25 @@ func TestParseProgram(t *testing.T) {
 		},
 		{
 			"{1: 1, 2: 2, 3: 3};",
-			"{1: 1, 2: 2, 3: 3}",
+			"{1:1, 2:2, 3:3}",
 			[]StatementTest{
 				ExpressionStatementTest{
 					HashLiteralTest{
-						[]ExpressionTest{
-							IntegerLiteralTest(1),
-							IntegerLiteralTest(2),
-							IntegerLiteralTest(3),
-						},
-						[]ExpressionTest{
-							IntegerLiteralTest(1),
-							IntegerLiteralTest(2),
-							IntegerLiteralTest(3),
-						},
+						1: IntegerLiteralTest(1),
+						2: IntegerLiteralTest(2),
+						3: IntegerLiteralTest(3),
 					},
 				},
 			},
 		},
 		{
 			"{true: 1, false: 2};",
-			"{false: 2, true: 1}",
+			"{true:1, false:2}",
 			[]StatementTest{
 				ExpressionStatementTest{
 					HashLiteralTest{
-						[]ExpressionTest{
-							BooleanLiteralTest(false),
-							BooleanLiteralTest(true),
-						},
-						[]ExpressionTest{
-							IntegerLiteralTest(2),
-							IntegerLiteralTest(1),
-						},
+						true:  IntegerLiteralTest(1),
+						false: IntegerLiteralTest(2),
 					},
 				},
 			},
@@ -1420,7 +1389,7 @@ func TestParseProgram(t *testing.T) {
 
 	for i, test := range tests {
 		if !testProgram(t, i, test.input, test.precedence, test.tests) {
-			return
+			continue
 		}
 	}
 }
@@ -1431,7 +1400,7 @@ func testProgram(t *testing.T, idx int, input string, precedence string, tests [
 	program := p.ParseProgram()
 
 	if 0 != len(p.Errors()) {
-		t.Errorf("test[%d] - %q - p.Errors() ==> expected: 0 actual: %d", idx, input, len(p.Errors()))
+		t.Errorf("test[%d] - %q - len(p.Errors()) ==> expected: 0 actual: %d", idx, input, len(p.Errors()))
 		for i, msg := range p.Errors() {
 			t.Errorf("test[%d] - p.Errors()[%d]: %q", idx, i, msg)
 		}
@@ -1439,13 +1408,13 @@ func testProgram(t *testing.T, idx int, input string, precedence string, tests [
 	}
 
 	if program == nil {
-		t.Errorf("test[%d] - %q - ParserProgram() ==> expected: not <nil>", idx, input)
+		t.Errorf("test[%d] - %q - p.ParseProgram() ==> expected: not <nil>", idx, input)
 		return false
 	}
 
 	actual := program.String()
 	if precedence != actual {
-		t.Errorf("test[%d] - %q - program.String() ==> expected: %q actual: %q", idx, input, precedence, actual)
+		t.Logf("test[%d] - %q - program.String() ==> expected: %q actual: %q", idx, input, precedence, actual)
 		return false
 	}
 
@@ -1486,7 +1455,7 @@ func testLetStatement(t *testing.T, idx int, input string, stmt ast.Statement, n
 
 	letStmt, ok := stmt.(*ast.LetStatement)
 	if !ok {
-		t.Errorf("test[%d] - %q - stmt ==> unexpected type. expected: %T actual: %T", idx, input, &ast.LetStatement{}, stmt)
+		t.Errorf("test[%d] - %q - stmt.(*ast.LetStatement) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.LetStatement{}, stmt)
 		return false
 	}
 
@@ -1509,7 +1478,7 @@ func testReturnStatement(t *testing.T, idx int, input string, stmt ast.Statement
 
 	returnStmt, ok := stmt.(*ast.ReturnStatement)
 	if !ok {
-		t.Errorf("test[%d] - %q - stmt ==> unexpected type. expected: %T actual: %T", idx, input, &ast.ReturnStatement{}, stmt)
+		t.Errorf("test[%d] - %q - stmt.(*ast.ReturnStatement) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.ReturnStatement{}, stmt)
 		return false
 	}
 
@@ -1523,7 +1492,7 @@ func testReturnStatement(t *testing.T, idx int, input string, stmt ast.Statement
 func testExpressionStatement(t *testing.T, idx int, input string, stmt ast.Statement, test ExpressionTest) bool {
 	expStmt, ok := stmt.(*ast.ExpressionStatement)
 	if !ok {
-		t.Errorf("test[%d] - %q - stmt ==> unexpected type. expected: %T actual: %T", idx, input, &ast.ExpressionStatement{}, stmt)
+		t.Errorf("test[%d] - %q - stmt.(*ast.ExpressionStatement) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.ExpressionStatement{}, stmt)
 		return false
 	}
 
@@ -1542,7 +1511,7 @@ func testBlockStatement(t *testing.T, idx int, input string, stmt ast.Statement,
 
 	blockStmt, ok := stmt.(*ast.BlockStatement)
 	if !ok {
-		t.Errorf("test[%d] - %q - stmt ==> unexpected type. expected: %T actual: %T", idx, input, &ast.BlockStatement{}, stmt)
+		t.Errorf("test[%d] - %q - stmt.(*ast.BlockStatement) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.BlockStatement{}, stmt)
 		return false
 	}
 
@@ -1575,7 +1544,7 @@ func testExpression(t *testing.T, idx int, input string, exp ast.Expression, tes
 	case ArrayLiteralTest:
 		return testArrayLiteral(t, idx, input, exp, []ExpressionTest(test))
 	case HashLiteralTest:
-		return testHashLiteral(t, idx, input, exp, test.keys, test.values)
+		return testHashLiteral(t, idx, input, exp, map[any]ExpressionTest(test))
 	case PrefixExpressionTest:
 		return testPrefixExpression(t, idx, input, exp, test.operator, test.rightValue)
 	case InfixExpressionTest:
@@ -1594,7 +1563,7 @@ func testExpression(t *testing.T, idx int, input string, exp ast.Expression, tes
 func testIdentifier(t *testing.T, idx int, input string, exp ast.Expression, value string) bool {
 	ident, ok := exp.(*ast.Identifier)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.Identifier{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.Identifier) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.Identifier{}, exp)
 		return false
 	}
 
@@ -1614,7 +1583,7 @@ func testIdentifier(t *testing.T, idx int, input string, exp ast.Expression, val
 func testIntegerLiteral(t *testing.T, idx int, input string, exp ast.Expression, value int64) bool {
 	integ, ok := exp.(*ast.IntegerLiteral)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.IntegerLiteral{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.IntegerLiteral) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.IntegerLiteral{}, exp)
 		return false
 	}
 
@@ -1634,7 +1603,7 @@ func testIntegerLiteral(t *testing.T, idx int, input string, exp ast.Expression,
 func testBooleanLiteral(t *testing.T, idx int, input string, exp ast.Expression, value bool) bool {
 	boolean, ok := exp.(*ast.BooleanLiteral)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.BooleanLiteral{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.BooleanLiteral) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.BooleanLiteral{}, exp)
 		return false
 	}
 
@@ -1659,7 +1628,7 @@ func testFunctionLiteral(t *testing.T, idx int, input string, exp ast.Expression
 
 	fnExp, ok := exp.(*ast.FunctionLiteral)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.FunctionLiteral{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.FunctionLiteral) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.FunctionLiteral{}, exp)
 		return false
 	}
 
@@ -1684,7 +1653,7 @@ func testFunctionLiteral(t *testing.T, idx int, input string, exp ast.Expression
 func testStringLiteral(t *testing.T, idx int, input string, exp ast.Expression, value string) bool {
 	str, ok := exp.(*ast.StringLiteral)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.StringLiteral{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.StringLiteral) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.StringLiteral{}, exp)
 		return false
 	}
 
@@ -1704,7 +1673,7 @@ func testStringLiteral(t *testing.T, idx int, input string, exp ast.Expression, 
 func testArrayLiteral(t *testing.T, idx int, input string, exp ast.Expression, tests []ExpressionTest) bool {
 	arr, ok := exp.(*ast.ArrayLiteral)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.ArrayLiteral{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.ArrayLiteral) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.ArrayLiteral{}, exp)
 		return false
 	}
 
@@ -1722,45 +1691,49 @@ func testArrayLiteral(t *testing.T, idx int, input string, exp ast.Expression, t
 	return true
 }
 
-func testHashLiteral(t *testing.T, idx int, input string, exp ast.Expression, keys []ExpressionTest, values []ExpressionTest) bool {
+func testHashLiteral(t *testing.T, idx int, input string, exp ast.Expression, tests map[any]ExpressionTest) bool {
 	hash, ok := exp.(*ast.HashLiteral)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.HashLiteral{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.HashLiteral) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.HashLiteral{}, exp)
 		return false
 	}
 
-	hashKeys := []string{}
-	keymap := make(map[string]ast.Expression)
-	for value := range hash.Pairs {
-		key := value.String()
-		hashKeys = append(hashKeys, key)
-		keymap[key] = value
-	}
-	sort.Strings(hashKeys)
-
-	hashValues := []ast.Expression{}
-	for _, key := range hashKeys {
-		hashValues = append(hashValues, hash.Pairs[keymap[key]])
-	}
-
-	if len(keys) != len(hashKeys) {
-		t.Errorf("test[%d] - %q - len(hash.Pairs) ==> expected: %d actual: %d", idx, input, len(keys), len(hashKeys))
+	if len(tests) != len(hash.Pairs) {
+		t.Errorf("test[%d] - %q - len(hash.Pairs) ==> expected: %d actual: %d", idx, input, len(tests), len(hash.Pairs))
 		return false
 	}
 
-	if len(values) != len(hashValues) {
-		t.Errorf("test[%d] - %q - len(hash.Pairs) ==> expected: %d actual: %d", idx, input, len(values), len(hashValues))
-		return false
-	}
-
-	for i, key := range hashKeys {
-		if !testExpression(t, idx, input, keymap[key], keys[i]) {
-			return false
-		}
-	}
-
-	for i, v := range hashValues {
-		if !testExpression(t, idx, input, v, values[i]) {
+	for key, value := range hash.Pairs {
+		switch key := key.(type) {
+		case *ast.IntegerLiteral:
+			expected, ok := tests[int(key.Value)]
+			if !ok {
+				t.Errorf("test[%d] - %q - tests[key.Value] ==> expected: not <nil>", idx, input)
+				return false
+			}
+			if !testExpression(t, idx, input, value, expected) {
+				return false
+			}
+		case *ast.BooleanLiteral:
+			expected, ok := tests[key.Value]
+			if !ok {
+				t.Errorf("test[%d] - %q - tests[key.Value] ==> expected: not <nil>", idx, input)
+				return false
+			}
+			if !testExpression(t, idx, input, value, expected) {
+				return false
+			}
+		case *ast.StringLiteral:
+			expected, ok := tests[key.Value]
+			if !ok {
+				t.Errorf("test[%d] - %q - tests[key.Value] ==> expected: not <nil>", idx, input)
+				return false
+			}
+			if !testExpression(t, idx, input, value, expected) {
+				return false
+			}
+		default:
+			t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", idx, input, key)
 			return false
 		}
 	}
@@ -1771,7 +1744,7 @@ func testHashLiteral(t *testing.T, idx int, input string, exp ast.Expression, ke
 func testPrefixExpression(t *testing.T, idx int, input string, exp ast.Expression, operator string, right ExpressionTest) bool {
 	opExp, ok := exp.(*ast.PrefixExpression)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.PrefixExpression{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.PrefixExpression) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.PrefixExpression{}, exp)
 		return false
 	}
 
@@ -1790,7 +1763,7 @@ func testPrefixExpression(t *testing.T, idx int, input string, exp ast.Expressio
 func testInfixExpression(t *testing.T, idx int, input string, exp ast.Expression, left ExpressionTest, operator string, right ExpressionTest) bool {
 	opExp, ok := exp.(*ast.InfixExpression)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.InfixExpression{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.InfixExpression) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.InfixExpression{}, exp)
 		return false
 	}
 
@@ -1818,7 +1791,7 @@ func testIfExpression(t *testing.T, idx int, input string, exp ast.Expression, c
 
 	ifExp, ok := exp.(*ast.IfExpression)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.IfExpression{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.IfExpression) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.IfExpression{}, exp)
 		return false
 	}
 
@@ -1845,7 +1818,7 @@ func testCallExpression(t *testing.T, idx int, input string, exp ast.Expression,
 
 	callExp, ok := exp.(*ast.CallExpression)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.CallExpression{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.CallExpression) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.CallExpression{}, exp)
 		return false
 	}
 
@@ -1863,12 +1836,12 @@ func testCallExpression(t *testing.T, idx int, input string, exp ast.Expression,
 		return false
 	}
 
-	if len(arguments) != len(callExp.Arguements) {
-		t.Errorf("test[%d] - %q - len(callExp.Arguements) ==> expected: %d actual: %d", idx, input, len(arguments), len(callExp.Arguements))
+	if len(arguments) != len(callExp.Arguments) {
+		t.Errorf("test[%d] - %q - len(callExp.Arguements) ==> expected: %d actual: %d", idx, input, len(arguments), len(callExp.Arguments))
 		return false
 	}
 
-	for i, argument := range callExp.Arguements {
+	for i, argument := range callExp.Arguments {
 		if !testExpression(t, idx, input, argument, arguments[i]) {
 			return false
 		}
@@ -1885,21 +1858,21 @@ func testIndexExpression(t *testing.T, idx int, input string, exp ast.Expression
 
 	indexExp, ok := exp.(*ast.IndexExpression)
 	if !ok {
-		t.Errorf("test[%d] - %q - exp ==> unexpected type. expected: %T actual: %T", idx, input, &ast.IndexExpression{}, exp)
+		t.Errorf("test[%d] - %q - exp.(*ast.IndexExpression) ==> unexpected type. expected: %T actual: %T", idx, input, &ast.IndexExpression{}, exp)
 		return false
 	}
 
 	switch test := array.(type) {
 	case IdentifierTest:
-		if !testIdentifier(t, idx, input, indexExp.Array, string(test)) {
+		if !testIdentifier(t, idx, input, indexExp.Struct, string(test)) {
 			return false
 		}
 	case ArrayLiteralTest:
-		if !testArrayLiteral(t, idx, input, indexExp.Array, []ExpressionTest(test)) {
+		if !testArrayLiteral(t, idx, input, indexExp.Struct, []ExpressionTest(test)) {
 			return false
 		}
 	default:
-		t.Errorf("test[%d] - %q - test ==> unexpected type. actual: %T", idx, input, test)
+		t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", idx, input, test)
 		return false
 	}
 

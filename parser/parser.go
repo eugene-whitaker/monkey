@@ -398,7 +398,7 @@ func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
 		Function: left,
 	}
 
-	exp.Arguements = p.parseCallArguments()
+	exp.Arguments = p.parseCallArguments()
 	return exp
 
 }
@@ -406,8 +406,8 @@ func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
 func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	// defer untrace(trace("parseIndexExpression"))
 	exp := &ast.IndexExpression{
-		Token: p.tok,
-		Array: left,
+		Token:  p.tok,
+		Struct: left,
 	}
 
 	p.advance()

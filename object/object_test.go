@@ -48,10 +48,12 @@ func TestHashKey(t *testing.T) {
 	for i, test := range tests {
 		if test.expected.HashKey() != test.actual.HashKey() {
 			t.Errorf("test[%d] - expected: %q actual: %q", i, test.expected.HashKey(), test.actual.HashKey())
+			continue
 		}
 
 		if test.expected.HashKey() == test.unexpected.HashKey() {
 			t.Errorf("test[%d] - expected: not equal but was: %q", i, test.unexpected.HashKey())
+			continue
 		}
 	}
 }

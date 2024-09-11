@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"monkey/ast"
 	"monkey/object"
+	"monkey/token"
 )
 
 var (
@@ -394,9 +395,9 @@ func evalStringInfixExpression(operator string, left, right *object.String) obje
 func evalArrayInfixExpression(operator string, left, right *object.Array) object.Object {
 	switch operator {
 	case "==":
-		return toBooleanObject(isArrayEqual(left, right))
+		return toBooleanObject(left == right)
 	case "!=":
-		return toBooleanObject(!isArrayEqual(left, right))
+		return toBooleanObject(left != right)
 	default:
 		return toErrorObject("unknown operation: %s %s %s", object.ARRAY_OBJECT, operator, object.ARRAY_OBJECT)
 	}
@@ -430,6 +431,10 @@ func evalIfExpression(node *ast.IfExpression, env *object.Environment) object.Ob
 }
 
 func evalCallExpression(node *ast.CallExpression, env *object.Environment) object.Object {
+	if node.Function.TokenLexeme() == "quote" {
+		return toQuoteObject(node.Arguments[0], env)
+	}
+
 	function := Eval(node.Function, env)
 
 	if isError(function) {
@@ -438,7 +443,7 @@ func evalCallExpression(node *ast.CallExpression, env *object.Environment) objec
 
 	args := []object.Object{}
 
-	for _, arg := range node.Arguements {
+	for _, arg := range node.Arguments {
 		result := Eval(arg, env)
 
 		if isError(result) {
@@ -474,8 +479,27 @@ func evalFunctionCallExpression(fn *object.Function, args []object.Object) objec
 	return result
 }
 
+func evalUnquoteCallExpression(node ast.Node, env *object.Environment) ast.Node {
+	return ast.Modify(node, func(node ast.Node) ast.Node {
+		callExpr, ok := node.(*ast.CallExpression)
+		if !ok {
+			return node
+		}
+
+		if callExpr.Function.TokenLexeme() != "unquote" {
+			return node
+		}
+
+		if len(callExpr.Arguments) != 1 {
+			return node
+		}
+
+		return toASTNode(Eval(callExpr.Arguments[0], env))
+	})
+}
+
 func evalIndexExpression(node *ast.IndexExpression, env *object.Environment) object.Object {
-	indexable := Eval(node.Array, env)
+	indexable := Eval(node.Struct, env)
 
 	if isError(indexable) {
 		return indexable
@@ -565,6 +589,28 @@ func toHashObject(pairs map[object.HashKey]object.HashPair) object.Object {
 	}
 }
 
+func toQuoteObject(node ast.Node, env *object.Environment) object.Object {
+	node = evalUnquoteCallExpression(node, env)
+	return &object.Quote{
+		Node: node,
+	}
+}
+
+func toASTNode(obj object.Object) ast.Node {
+	switch obj := obj.(type) {
+	case *object.Integer:
+		return &ast.IntegerLiteral{
+			Token: token.Token{
+				Type:   token.INT,
+				Lexeme: fmt.Sprintf("%d", obj.Value),
+			},
+			Value: obj.Value,
+		}
+	default:
+		return nil
+	}
+}
+
 func isTruthy(obj object.Object) bool {
 	switch obj {
 	case ZERO, FALSE, NULL, EMPTY_STRING, EMPTY_ARRAY, EMPTY_HASH:
@@ -576,47 +622,4 @@ func isTruthy(obj object.Object) bool {
 
 func isError(obj object.Object) bool {
 	return obj != nil && obj.Type() == object.ERROR_OBJECT
-}
-
-func isArrayEqual(left, right *object.Array) bool {
-	if len(left.Elements) != len(right.Elements) {
-		return false
-	}
-
-	for i, elem := range left.Elements {
-		switch left := elem.(type) {
-		case *object.Integer:
-			right, ok := right.Elements[i].(*object.Integer)
-			if !ok || left.Value != right.Value {
-				return false
-			}
-		case *object.Boolean:
-			right, ok := right.Elements[i].(*object.Boolean)
-			if !ok || left != right {
-				return false
-			}
-		case *object.Null:
-			if _, ok := right.Elements[i].(*object.Null); !ok {
-				return false
-			}
-		case *object.Function:
-			right, ok := right.Elements[i].(*object.Function)
-			if !ok || left != right {
-				return false
-			}
-		case *object.String:
-			right, ok := right.Elements[i].(*object.String)
-			if !ok || left.Value != right.Value {
-				return false
-			}
-		case *object.Array:
-			right, ok := right.Elements[i].(*object.Array)
-			if !ok || !isArrayEqual(left, right) {
-				return false
-			}
-		default:
-			return false
-		}
-	}
-	return true
 }

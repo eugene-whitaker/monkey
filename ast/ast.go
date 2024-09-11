@@ -2,9 +2,7 @@ package ast
 
 import (
 	"bytes"
-	"fmt"
 	"monkey/token"
-	"sort"
 	"strings"
 )
 
@@ -254,18 +252,9 @@ func (hl *HashLiteral) TokenLexeme() string {
 func (hl *HashLiteral) String() string {
 	var out bytes.Buffer
 
-	keys := []string{}
-	keymap := make(map[string]Expression)
-	for value := range hl.Pairs {
-		key := value.String()
-		keys = append(keys, key)
-		keymap[key] = value
-	}
-	sort.Strings(keys)
-
 	pairs := []string{}
-	for _, key := range keys {
-		pairs = append(pairs, fmt.Sprintf("%s: %s", key, hl.Pairs[keymap[key]]))
+	for key, value := range hl.Pairs {
+		pairs = append(pairs, key.String()+":"+value.String())
 	}
 
 	out.WriteString("{")
@@ -353,9 +342,9 @@ func (ie *IfExpression) String() string {
 }
 
 type CallExpression struct {
-	Token      token.Token // The '(' token
-	Function   Expression  // Identifier or FunctionLiteral
-	Arguements []Expression
+	Token     token.Token // The '(' token
+	Function  Expression  // Identifier or FunctionLiteral
+	Arguments []Expression
 }
 
 func (ce *CallExpression) expressionNode() {}
@@ -367,7 +356,7 @@ func (ce *CallExpression) String() string {
 	var out bytes.Buffer
 
 	args := []string{}
-	for _, a := range ce.Arguements {
+	for _, a := range ce.Arguments {
 		args = append(args, a.String())
 	}
 
@@ -380,9 +369,9 @@ func (ce *CallExpression) String() string {
 }
 
 type IndexExpression struct {
-	Token token.Token // The '[' token
-	Array Expression
-	Index Expression
+	Token  token.Token // The '[' token
+	Struct Expression  // ArrayLiteral or HashLiteral
+	Index  Expression
 }
 
 func (ie *IndexExpression) expressionNode() {}
@@ -394,7 +383,7 @@ func (ie *IndexExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString("(")
-	out.WriteString(ie.Array.String())
+	out.WriteString(ie.Struct.String())
 	out.WriteString("[")
 	out.WriteString(ie.Index.String())
 	out.WriteString("])")

@@ -280,6 +280,7 @@ func TestNextToken(t *testing.T) {
 		},
 	}
 
+skip:
 	for i, test := range tests {
 		l := NewLexer(test.input)
 
@@ -287,11 +288,13 @@ func TestNextToken(t *testing.T) {
 			actual := l.NextToken()
 
 			if expected.ttype != actual.Type {
-				t.Fatalf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, test.input, expected.ttype, actual.Type)
+				t.Errorf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, test.input, expected.ttype, actual.Type)
+				break skip
 			}
 
 			if expected.lexeme != actual.Lexeme {
-				t.Fatalf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, test.input, expected.lexeme, actual.Lexeme)
+				t.Errorf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, test.input, expected.lexeme, actual.Lexeme)
+				break skip
 			}
 		}
 	}

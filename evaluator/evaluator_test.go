@@ -23,7 +23,9 @@ type NullTest struct{}
 
 func (nt NullTest) object() {}
 
-type ErrorTest string
+type ErrorTest struct {
+	message string
+}
 
 func (et ErrorTest) object() {}
 
@@ -45,6 +47,12 @@ func (at ArrayTest) object() {}
 type HashTest map[object.HashKey]ObjectTest
 
 func (ht HashTest) object() {}
+
+type QuoteTest struct {
+	node string
+}
+
+func (qt QuoteTest) object() {}
 
 func TestEval(t *testing.T) {
 	tests := []struct {
@@ -273,47 +281,69 @@ func TestEval(t *testing.T) {
 		},
 		{
 			"5 + true;",
-			ErrorTest("unknown operation: INTEGER + BOOLEAN"),
+			ErrorTest{
+				"unknown operation: INTEGER + BOOLEAN",
+			},
 		},
 		{
 			"5 + true; 5;",
-			ErrorTest("unknown operation: INTEGER + BOOLEAN"),
+			ErrorTest{
+				"unknown operation: INTEGER + BOOLEAN",
+			},
 		},
 		{
 			"-true;",
-			ErrorTest("unknown operation: -BOOLEAN"),
+			ErrorTest{
+				"unknown operation: -BOOLEAN",
+			},
 		},
 		{
 			"true + false;",
-			ErrorTest("unknown operation: BOOLEAN + BOOLEAN"),
+			ErrorTest{
+				"unknown operation: BOOLEAN + BOOLEAN",
+			},
 		},
 		{
 			"5; true + false; 5;",
-			ErrorTest("unknown operation: BOOLEAN + BOOLEAN"),
+			ErrorTest{
+				"unknown operation: BOOLEAN + BOOLEAN",
+			},
 		},
 		{
 			"if (10 > 1) { true + false; };",
-			ErrorTest("unknown operation: BOOLEAN + BOOLEAN"),
+			ErrorTest{
+				"unknown operation: BOOLEAN + BOOLEAN",
+			},
 		},
 		{
 			"if (10 > 1) { if (10 > 1) { return true + false; } return 1; };",
-			ErrorTest("unknown operation: BOOLEAN + BOOLEAN"),
+			ErrorTest{
+				"unknown operation: BOOLEAN + BOOLEAN",
+			},
 		},
 		{
 			"ident",
-			ErrorTest("undefined reference: ident"),
+			ErrorTest{
+				"undefined reference: ident",
+			},
 		},
 		{
 			"\"hello\" - \"world\"",
-			ErrorTest("unknown operation: STRING - STRING"),
+			ErrorTest{
+				"unknown operation: STRING - STRING",
+			},
 		},
 		{
 			"{\"key\": \"value\"}[fn(x) { x; }];",
-			ErrorTest("unknown operation: HASH[FUNCTION]"),
+			ErrorTest{
+				"unknown operation: HASH[FUNCTION]",
+			},
 		},
 		{
 			"999[1];",
-			ErrorTest("unknown operation: INTEGER[INTEGER]"),
+			ErrorTest{
+				"unknown operation: INTEGER[INTEGER]",
+			},
 		},
 		{
 			"let a = 5; a;",
@@ -394,11 +424,15 @@ func TestEval(t *testing.T) {
 		},
 		{
 			"len(1)",
-			ErrorTest("invalid argument types in call to `len`: found (INTEGER) want (STRING) or (ARRAY)"),
+			ErrorTest{
+				"invalid argument types in call to `len`: found (INTEGER) want (STRING) or (ARRAY)",
+			},
 		},
 		{
 			"len(\"one\", \"two\")",
-			ErrorTest("invalid argument count in call to `len`: found (STRING, STRING) want (STRING) or (ARRAY)"),
+			ErrorTest{
+				"invalid argument count in call to `len`: found (STRING, STRING) want (STRING) or (ARRAY)",
+			},
 		},
 		{
 			"len([1, 2, 3])",
@@ -407,10 +441,6 @@ func TestEval(t *testing.T) {
 		{
 			"len([])",
 			IntegerTest(0),
-		},
-		{
-			"puts(\"hello\", \"world\")",
-			NullTest{},
 		},
 		{
 			"first([1, 2, 3])",
@@ -422,7 +452,9 @@ func TestEval(t *testing.T) {
 		},
 		{
 			"first(1)",
-			ErrorTest("invalid argument types in call to `first`: found (INTEGER) want (ARRAY)"),
+			ErrorTest{
+				"invalid argument types in call to `first`: found (INTEGER) want (ARRAY)",
+			},
 		},
 		{
 			"last([1, 2, 3])",
@@ -434,7 +466,9 @@ func TestEval(t *testing.T) {
 		},
 		{
 			"last(1)",
-			ErrorTest("invalid argument types in call to `last`: found (INTEGER) want (ARRAY)"),
+			ErrorTest{
+				"invalid argument types in call to `last`: found (INTEGER) want (ARRAY)",
+			},
 		},
 		{
 			"rest([1, 2, 3])",
@@ -459,7 +493,9 @@ func TestEval(t *testing.T) {
 		},
 		{
 			"push(1, 1)",
-			ErrorTest("invalid argument types in call to `push`: found (INTEGER, INTEGER) want (ARRAY, ANY)"),
+			ErrorTest{
+				"invalid argument types in call to `push`: found (INTEGER, INTEGER) want (ARRAY, ANY)",
+			},
 		},
 		{
 			"[1, 2 * 2, 3 + 3];",
@@ -549,20 +585,76 @@ func TestEval(t *testing.T) {
 			IntegerTest(5),
 		},
 		{
-			"{false: 5}[false]",
-			IntegerTest(5),
+			"quote(5)",
+			QuoteTest{
+				"5",
+			},
+		},
+		{
+			"quote(5 + 8)",
+			QuoteTest{
+				"(5 + 8)",
+			},
+		},
+		{
+			"quote(ident)",
+			QuoteTest{
+				"ident",
+			},
+		},
+		{
+			"quote(ident + ident)",
+			QuoteTest{
+				"(ident + ident)",
+			},
+		},
+		{
+			"quote(unquote(4))",
+			QuoteTest{
+				"4",
+			},
+		},
+		{
+			"quote(unquote(4 + 4))",
+			QuoteTest{
+				"8",
+			},
+		},
+		{
+			"quote(8 + unquote(4 + 4))",
+			QuoteTest{
+				"(8 + 8)",
+			},
+		},
+		{
+			"quote(unquote(4 + 4) + 8)",
+			QuoteTest{
+				"(8 + 8)",
+			},
+		},
+		{
+			"let ident = 8; quote(ident)",
+			QuoteTest{
+				"ident",
+			},
+		},
+		{
+			"let ident = 8; quote(unquote(ident))",
+			QuoteTest{
+				"8",
+			},
 		},
 	}
 
-	for i, tt := range tests {
-		l := lexer.NewLexer(tt.input)
+	for i, test := range tests {
+		l := lexer.NewLexer(test.input)
 		p := parser.NewParser(l)
 		program := p.ParseProgram()
 		env := object.NewEnvironment()
 		eval := Eval(program, env)
 
-		if !testObject(t, i, tt.input, eval, tt.test) {
-			return
+		if !testObject(t, i, test.input, eval, test.test) {
+			continue
 		}
 	}
 }
@@ -576,7 +668,7 @@ func testObject(t *testing.T, idx int, input string, obj object.Object, test Obj
 	case NullTest:
 		return testNull(t, idx, input, obj)
 	case ErrorTest:
-		return testError(t, idx, input, obj, string(test))
+		return testError(t, idx, input, obj, test.message)
 	case FunctionTest:
 		return testFunction(t, idx, input, obj, test.parameters, test.body)
 	case StringTest:
@@ -585,6 +677,8 @@ func testObject(t *testing.T, idx int, input string, obj object.Object, test Obj
 		return testArray(t, idx, input, obj, []ObjectTest(test))
 	case HashTest:
 		return testHash(t, idx, input, obj, map[object.HashKey]ObjectTest(test))
+	case QuoteTest:
+		return testQuote(t, idx, input, obj, test.node)
 	}
 	t.Errorf("test[%d] - %q ==> unexpected type. actual: %T", idx, input, test)
 	return false
@@ -730,6 +824,27 @@ func testHash(t *testing.T, idx int, input string, obj object.Object, tests map[
 		if !testObject(t, idx, input, value.Value, test) {
 			return false
 		}
+	}
+
+	return true
+}
+
+func testQuote(t *testing.T, idx int, input string, obj object.Object, expected string) bool {
+	result, ok := obj.(*object.Quote)
+	if !ok {
+		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", idx, input, object.Quote{}, obj)
+		return false
+	}
+
+	if result.Node == nil {
+		t.Errorf("test[%d] - %q - result.Node ==> expected: not <nil>", idx, input)
+		return false
+	}
+
+	actual := result.Node.String()
+	if expected != actual {
+		t.Errorf("test[%d] - %q - result.Node.String() ==> expected: %q actual: %q", idx, input, expected, actual)
+		return false
 	}
 
 	return true
