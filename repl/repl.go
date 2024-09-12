@@ -28,6 +28,7 @@ const MONKEY_FACE = `
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 	env := object.NewEnvironment()
+	macros := object.NewEnvironment()
 
 	io.WriteString(out, MONKEY_FACE)
 	io.WriteString(out, "\n")
@@ -53,7 +54,7 @@ func Start(in io.Reader, out io.Writer) {
 					os.Exit(0)
 				}
 			} else {
-				run(line, out, env)
+				run(line, out, env, macros)
 			}
 		}
 	}
@@ -61,16 +62,17 @@ func Start(in io.Reader, out io.Writer) {
 
 func Script(in string, out io.Writer) {
 	env := object.NewEnvironment()
+	macros := object.NewEnvironment()
 
 	bytes, err := os.ReadFile(in)
 	if err != nil {
 		panic(err)
 	}
 
-	run(string(bytes), out, env)
+	run(string(bytes), out, env, macros)
 }
 
-func run(input string, out io.Writer, env *object.Environment) {
+func run(input string, out io.Writer, env, macros *object.Environment) {
 	l := lexer.NewLexer(input)
 	p := parser.NewParser(l)
 
@@ -84,7 +86,10 @@ func run(input string, out io.Writer, env *object.Environment) {
 		return
 	}
 
-	evaluated := evaluator.Eval(program, env)
+	evaluator.DefineMacros(program, macros)
+	expanded := evaluator.ExpandMacro(program, macros)
+
+	evaluated := evaluator.Eval(expanded, env)
 	if evaluated != nil {
 		io.WriteString(out, evaluated.Inspect())
 		io.WriteString(out, "\n")
