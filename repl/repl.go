@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"monkey/evaluator"
-	"monkey/lexer"
-	"monkey/object"
-	"monkey/parser"
 	"os"
+
+	"github.com/eugene-whitaker/monkey/evaluator"
+	"github.com/eugene-whitaker/monkey/lexer"
+	"github.com/eugene-whitaker/monkey/object"
+	"github.com/eugene-whitaker/monkey/parser"
 )
 
 const MONKEY_FACE = `

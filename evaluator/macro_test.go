@@ -1,10 +1,11 @@
 package evaluator
 
 import (
-	"monkey/lexer"
-	"monkey/object"
-	"monkey/parser"
 	"testing"
+
+	"github.com/eugene-whitaker/monkey/lexer"
+	"github.com/eugene-whitaker/monkey/object"
+	"github.com/eugene-whitaker/monkey/parser"
 )
 
 type EnvTest interface {

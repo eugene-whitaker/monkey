@@ -2,9 +2,10 @@ package parser
 
 import (
 	"fmt"
-	"monkey/ast"
-	"monkey/lexer"
 	"testing"
+
+	"github.com/eugene-whitaker/monkey/ast"
+	"github.com/eugene-whitaker/monkey/lexer"
 )
 
 type StatementTest interface {

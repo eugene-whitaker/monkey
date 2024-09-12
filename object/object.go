@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"hash/fnv"
-	"monkey/ast"
 	"strings"
+
+	"github.com/eugene-whitaker/monkey/ast"
 )
 
 const (

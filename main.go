@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"monkey/repl"
 	"os"
+
+	"github.com/eugene-whitaker/monkey/repl"
 )
 
 func main() {

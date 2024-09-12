@@ -2,10 +2,12 @@ package parser
 
 import (
 	"fmt"
-	"monkey/ast"
-	"monkey/lexer"
-	"monkey/token"
 	"strconv"
+	"strings"
+
+	"github.com/eugene-whitaker/monkey/ast"
+	"github.com/eugene-whitaker/monkey/lexer"
+	"github.com/eugene-whitaker/monkey/token"
 )
 
 const (
@@ -654,4 +656,25 @@ func (p *Parser) error(tok token.Token, msg string) {
 
 	msg = fmt.Sprintf("%d:%d: %s", ln, col, msg)
 	p.errors = append(p.errors, msg)
+}
+
+var depth = 0
+
+func trace(msg string) string {
+	fmt.Printf(
+		"%s%s\n",
+		strings.Repeat("\t", depth),
+		"BEGIN "+msg,
+	)
+	depth = depth + 1
+	return msg
+}
+
+func untrace(msg string) {
+	depth = depth - 1
+	fmt.Printf(
+		"%s%s\n",
+		strings.Repeat("\t", depth),
+		"END "+msg,
+	)
 }

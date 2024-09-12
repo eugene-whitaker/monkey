@@ -2,8 +2,9 @@ package evaluator
 
 import (
 	"fmt"
-	"monkey/object"
 	"strings"
+
+	"github.com/eugene-whitaker/monkey/object"
 )
 
 var builtins = map[string]*object.Builtin{

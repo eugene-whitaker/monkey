@@ -1,8 +1,9 @@
 package lexer
 
 import (
-	"monkey/token"
 	"testing"
+
+	"github.com/eugene-whitaker/monkey/token"
 )
 
 type TokenTest struct {
