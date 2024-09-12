@@ -644,6 +644,30 @@ func TestEval(t *testing.T) {
 				"8",
 			},
 		},
+		{
+			"quote(unquote(true))",
+			QuoteTest{
+				"true",
+			},
+		},
+		{
+			"quote(unquote(true == false))",
+			QuoteTest{
+				"false",
+			},
+		},
+		{
+			"quote(unquote(quote(4 + 4)))",
+			QuoteTest{
+				"(4 + 4)",
+			},
+		},
+		{
+			"let quoted = quote(4 + 4); quote(unquote(4 + 4) + unquote(quoted))",
+			QuoteTest{
+				"(8 + (4 + 4))",
+			},
+		},
 	}
 
 	for i, test := range tests {
@@ -738,21 +762,21 @@ func testError(t *testing.T, idx int, input string, obj object.Object, message s
 	return true
 }
 
-func testFunction(t *testing.T, idx int, input string, obj object.Object, parameters []string, body string) bool {
+func testFunction(t *testing.T, idx int, input string, obj object.Object, params []string, body string) bool {
 	result, ok := obj.(*object.Function)
 	if !ok {
 		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", idx, input, object.Function{}, obj)
 		return false
 	}
 
-	if len(parameters) != len(result.Parameters) {
-		t.Errorf("test[%d] - %q - len(result.Parameters) ==> expected: %d actual: %d", idx, input, len(parameters), len(result.Parameters))
+	if len(params) != len(result.Parameters) {
+		t.Errorf("test[%d] - %q - len(result.Parameters) ==> expected: %d actual: %d", idx, input, len(params), len(result.Parameters))
 		return false
 	}
 
-	for i, parameter := range result.Parameters {
-		if parameters[i] != parameter.String() {
-			t.Errorf("test[%d] - %q - result.Parameters[%d].String() ==> expected: %q actual: %q", idx, input, i, parameters[i], parameter)
+	for i, param := range result.Parameters {
+		if params[i] != param.String() {
+			t.Errorf("test[%d] - %q - result.Parameters[%d].String() ==> expected: %q actual: %q", idx, input, i, params[i], param)
 			return false
 		}
 	}
@@ -833,11 +857,6 @@ func testQuote(t *testing.T, idx int, input string, obj object.Object, expected 
 	result, ok := obj.(*object.Quote)
 	if !ok {
 		t.Errorf("test[%d] - %q - obj ==> unexpected type. expected: %T actual: %T", idx, input, object.Quote{}, obj)
-		return false
-	}
-
-	if result.Node == nil {
-		t.Errorf("test[%d] - %q - result.Node ==> expected: not <nil>", idx, input)
 		return false
 	}
 

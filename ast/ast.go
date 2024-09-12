@@ -186,14 +186,14 @@ func (fl *FunctionLiteral) TokenLexeme() string {
 func (fl *FunctionLiteral) String() string {
 	var out bytes.Buffer
 
-	params := []string{}
+	ps := []string{}
 	for _, p := range fl.Parameters {
-		params = append(params, p.String())
+		ps = append(ps, p.String())
 	}
 
 	out.WriteString(fl.TokenLexeme())
 	out.WriteString("(")
-	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(strings.Join(ps, ", "))
 	out.WriteString(")")
 	out.WriteString(fl.Body.String())
 
@@ -227,13 +227,13 @@ func (al *ArrayLiteral) TokenLexeme() string {
 func (al *ArrayLiteral) String() string {
 	var out bytes.Buffer
 
-	elems := []string{}
-	for _, elem := range al.Elements {
-		elems = append(elems, elem.String())
+	es := []string{}
+	for _, e := range al.Elements {
+		es = append(es, e.String())
 	}
 
 	out.WriteString("[")
-	out.WriteString(strings.Join(elems, ", "))
+	out.WriteString(strings.Join(es, ", "))
 	out.WriteString("]")
 
 	return out.String()
@@ -252,13 +252,13 @@ func (hl *HashLiteral) TokenLexeme() string {
 func (hl *HashLiteral) String() string {
 	var out bytes.Buffer
 
-	pairs := []string{}
-	for key, value := range hl.Pairs {
-		pairs = append(pairs, key.String()+":"+value.String())
+	ps := []string{}
+	for k, v := range hl.Pairs {
+		ps = append(ps, k.String()+":"+v.String())
 	}
 
 	out.WriteString("{")
-	out.WriteString(strings.Join(pairs, ", "))
+	out.WriteString(strings.Join(ps, ", "))
 	out.WriteString("}")
 
 	return out.String()
@@ -355,14 +355,14 @@ func (ce *CallExpression) TokenLexeme() string {
 func (ce *CallExpression) String() string {
 	var out bytes.Buffer
 
-	args := []string{}
+	as := []string{}
 	for _, a := range ce.Arguments {
-		args = append(args, a.String())
+		as = append(as, a.String())
 	}
 
 	out.WriteString(ce.Function.String())
 	out.WriteString("(")
-	out.WriteString(strings.Join(args, ", "))
+	out.WriteString(strings.Join(as, ", "))
 	out.WriteString(")")
 
 	return out.String()
@@ -387,6 +387,34 @@ func (ie *IndexExpression) String() string {
 	out.WriteString("[")
 	out.WriteString(ie.Index.String())
 	out.WriteString("])")
+
+	return out.String()
+}
+
+type MacroExpression struct {
+	Token      token.Token // The 'macro' token
+	Parameters []*Identifier
+	Body       *BlockStatement
+}
+
+func (me *MacroExpression) expressionNode() {}
+func (me *MacroExpression) TokenLexeme() string {
+	return me.Token.Lexeme
+}
+
+func (me *MacroExpression) String() string {
+	var out bytes.Buffer
+
+	ps := []string{}
+	for _, p := range me.Parameters {
+		ps = append(ps, p.String())
+	}
+
+	out.WriteString(me.TokenLexeme())
+	out.WriteString("(")
+	out.WriteString(strings.Join(ps, ", "))
+	out.WriteString(")")
+	out.WriteString(me.Body.String())
 
 	return out.String()
 }

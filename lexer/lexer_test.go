@@ -278,24 +278,49 @@ func TestNextToken(t *testing.T) {
 				{token.EOF, ""},
 			},
 		},
+		{
+			"macro(x, y) { x + y; };",
+			[]TokenTest{
+				{token.MACRO, "macro"},
+				{token.LPAREN, "("},
+				{token.IDENT, "x"},
+				{token.COMMA, ","},
+				{token.IDENT, "y"},
+				{token.RPAREN, ")"},
+				{token.LBRACE, "{"},
+				{token.IDENT, "x"},
+				{token.PLUS, "+"},
+				{token.IDENT, "y"},
+				{token.SEMICOLON, ";"},
+				{token.RBRACE, "}"},
+				{token.SEMICOLON, ";"},
+				{token.EOF, ""},
+			},
+		},
 	}
 
-skip:
 	for i, test := range tests {
-		l := NewLexer(test.input)
-
-		for j, expected := range test.tests {
-			actual := l.NextToken()
-
-			if expected.ttype != actual.Type {
-				t.Errorf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, test.input, expected.ttype, actual.Type)
-				break skip
-			}
-
-			if expected.lexeme != actual.Lexeme {
-				t.Errorf("tests[%d][%d] - %q ==> expected: %q actual: %q", i, j, test.input, expected.lexeme, actual.Lexeme)
-				break skip
-			}
+		if !testTokens(t, i, test.input, test.tests) {
+			continue
 		}
 	}
+}
+
+func testTokens(t *testing.T, idx int, input string, tests []TokenTest) bool {
+	l := NewLexer(input)
+	for j, expected := range tests {
+		actual := l.NextToken()
+
+		if expected.ttype != actual.Type {
+			t.Errorf("tests[%d][%d] - %q ==> expected: %q actual: %q", idx, j, input, expected.ttype, actual.Type)
+			return false
+		}
+
+		if expected.lexeme != actual.Lexeme {
+			t.Errorf("tests[%d][%d] - %q ==> expected: %q actual: %q", idx, j, input, expected.lexeme, actual.Lexeme)
+			return false
+		}
+	}
+
+	return true
 }

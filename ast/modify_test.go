@@ -181,7 +181,7 @@ func TestModify(t *testing.T) {
 		actual := Modify(test.input, modifier)
 
 		if !reflect.DeepEqual(test.expected, actual) {
-			t.Errorf("test[%d] - !reflect.DeepEqual(test.expected, actual) ==> expected: %#v actual: %#v", i, test.expected, actual)
+			t.Errorf("test[%d] - Modify(test.input, modifier) ==> expected: %#v actual: %#v", i, test.expected, actual)
 			continue
 		}
 	}

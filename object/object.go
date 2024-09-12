@@ -20,6 +20,7 @@ const (
 	ARRAY_OBJECT        = "ARRAY"
 	HASH_OBJECT         = "HASH"
 	QUOTE_OBJECT        = "QUOTE"
+	MACRO_OBJECT        = "MACRO"
 )
 
 type ObjectType string
@@ -70,17 +71,17 @@ func (b *Boolean) Inspect() string {
 }
 
 func (b *Boolean) HashKey() HashKey {
-	var value uint64
+	var v uint64
 
 	if b.Value {
-		value = 1
+		v = 1
 	} else {
-		value = 0
+		v = 0
 	}
 
 	return HashKey{
 		Type:  b.Type(),
-		Value: value,
+		Value: v,
 	}
 }
 
@@ -131,13 +132,13 @@ func (f *Function) Type() ObjectType {
 func (f *Function) Inspect() string {
 	var out bytes.Buffer
 
-	params := []string{}
-	for _, param := range f.Parameters {
-		params = append(params, param.String())
+	ps := []string{}
+	for _, p := range f.Parameters {
+		ps = append(ps, p.String())
 	}
 
 	out.WriteString("fn(")
-	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(strings.Join(ps, ", "))
 	out.WriteString(") {\n")
 	out.WriteString(f.Body.String())
 	out.WriteString("\n}")
@@ -158,12 +159,12 @@ func (s *String) Inspect() string {
 }
 
 func (s *String) HashKey() HashKey {
-	hash := fnv.New64a()
-	hash.Write([]byte(s.Value))
+	h := fnv.New64a()
+	h.Write([]byte(s.Value))
 
 	return HashKey{
 		Type:  s.Type(),
-		Value: hash.Sum64(),
+		Value: h.Sum64(),
 	}
 }
 
@@ -192,13 +193,13 @@ func (a *Array) Type() ObjectType {
 func (a *Array) Inspect() string {
 	var out bytes.Buffer
 
-	elems := []string{}
-	for _, elem := range a.Elements {
-		elems = append(elems, elem.Inspect())
+	es := []string{}
+	for _, e := range a.Elements {
+		es = append(es, e.Inspect())
 	}
 
 	out.WriteString("[")
-	out.WriteString(strings.Join(elems, ", "))
+	out.WriteString(strings.Join(es, ", "))
 	out.WriteString("]")
 
 	return out.String()
@@ -220,13 +221,13 @@ func (h *Hash) Type() ObjectType {
 func (h *Hash) Inspect() string {
 	var out bytes.Buffer
 
-	pairs := []string{}
-	for _, pair := range h.Pairs {
-		pairs = append(pairs, pair.Key.Inspect()+":"+pair.Value.Inspect())
+	ps := []string{}
+	for _, p := range h.Pairs {
+		ps = append(ps, p.Key.Inspect()+":"+p.Value.Inspect())
 	}
 
 	out.WriteString("{")
-	out.WriteString(strings.Join(pairs, ", "))
+	out.WriteString(strings.Join(ps, ", "))
 	out.WriteString("}")
 
 	return out.String()
@@ -242,4 +243,31 @@ func (q *Quote) Type() ObjectType {
 
 func (q *Quote) Inspect() string {
 	return "quote(" + q.Node.String() + ")"
+}
+
+type Macro struct {
+	Parameters []*ast.Identifier
+	Body       *ast.BlockStatement
+	Env        *Environment
+}
+
+func (m *Macro) Type() ObjectType {
+	return FUNCTION_OBJECT
+}
+
+func (m *Macro) Inspect() string {
+	var out bytes.Buffer
+
+	ps := []string{}
+	for _, p := range m.Parameters {
+		ps = append(ps, p.String())
+	}
+
+	out.WriteString("fn(")
+	out.WriteString(strings.Join(ps, ", "))
+	out.WriteString(") {\n")
+	out.WriteString(m.Body.String())
+	out.WriteString("\n}")
+
+	return out.String()
 }

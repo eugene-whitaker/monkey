@@ -5,110 +5,58 @@ type ModifierFunc func(Node) Node
 func Modify(node Node, modifier ModifierFunc) Node {
 	switch node := node.(type) {
 	case *Program:
-		modifyProgram(node, modifier)
+		for i, stmt := range node.Statements {
+			node.Statements[i], _ = Modify(stmt, modifier).(Statement)
+		}
 	case *LetStatement:
-		modifyLetStatement(node, modifier)
+		node.Name, _ = Modify(node.Name, modifier).(*Identifier)
+		node.Value, _ = Modify(node.Value, modifier).(Expression)
 	case *ReturnStatement:
-		modifyReturnStatement(node, modifier)
+		node.ReturnValue, _ = Modify(node.ReturnValue, modifier).(Expression)
 	case *ExpressionStatement:
-		modifyExpressionStatement(node, modifier)
+		node.Expression, _ = Modify(node.Expression, modifier).(Expression)
 	case *BlockStatement:
-		modifyBlockStatement(node, modifier)
+		for i, stmt := range node.Statements {
+			node.Statements[i], _ = Modify(stmt, modifier).(Statement)
+		}
 	case *FunctionLiteral:
-		modifyFunctionLiteral(node, modifier)
+		for i, ident := range node.Parameters {
+			node.Parameters[i], _ = Modify(ident, modifier).(*Identifier)
+		}
+		node.Body, _ = Modify(node.Body, modifier).(*BlockStatement)
 	case *ArrayLiteral:
-		modifyArrayLiteral(node, modifier)
+		for i, elem := range node.Elements {
+			node.Elements[i], _ = Modify(elem, modifier).(Expression)
+		}
 	case *HashLiteral:
-		modifyHashLiteral(node, modifier)
+		pairs := make(map[Expression]Expression)
+		for key, value := range node.Pairs {
+			key, _ = Modify(key, modifier).(Expression)
+			value, _ = Modify(value, modifier).(Expression)
+
+			pairs[key] = value
+		}
+		node.Pairs = pairs
 	case *PrefixExpression:
-		modifyPrefixExpression(node, modifier)
+		node.Right, _ = Modify(node.Right, modifier).(Expression)
 	case *InfixExpression:
-		modifyInfixExpression(node, modifier)
+		node.Left, _ = Modify(node.Left, modifier).(Expression)
+		node.Right, _ = Modify(node.Right, modifier).(Expression)
 	case *IfExpression:
-		modifyIfExpression(node, modifier)
+		node.Condition, _ = Modify(node.Condition, modifier).(Expression)
+		node.Consequence, _ = Modify(node.Consequence, modifier).(*BlockStatement)
+		if node.Alternative != nil {
+			node.Alternative, _ = Modify(node.Alternative, modifier).(*BlockStatement)
+		}
 	case *CallExpression:
-		modifyCallExpression(node, modifier)
+		node.Function, _ = Modify(node.Function, modifier).(Expression)
+		for i, arg := range node.Arguments {
+			node.Arguments[i], _ = Modify(arg, modifier).(Expression)
+		}
 	case *IndexExpression:
-		modifyIndexExpression(node, modifier)
+		node.Struct, _ = Modify(node.Struct, modifier).(Expression)
+		node.Index, _ = Modify(node.Index, modifier).(Expression)
 	}
 
 	return modifier(node)
-}
-
-func modifyProgram(node *Program, modifier ModifierFunc) {
-	for i, stmt := range node.Statements {
-		node.Statements[i], _ = Modify(stmt, modifier).(Statement)
-	}
-}
-
-func modifyLetStatement(node *LetStatement, modifier ModifierFunc) {
-	node.Name, _ = Modify(node.Name, modifier).(*Identifier)
-	node.Value, _ = Modify(node.Value, modifier).(Expression)
-}
-
-func modifyReturnStatement(node *ReturnStatement, modifier ModifierFunc) {
-	node.ReturnValue, _ = Modify(node.ReturnValue, modifier).(Expression)
-}
-
-func modifyExpressionStatement(node *ExpressionStatement, modifier ModifierFunc) {
-	node.Expression, _ = Modify(node.Expression, modifier).(Expression)
-}
-
-func modifyBlockStatement(node *BlockStatement, modifier ModifierFunc) {
-	for i, stmt := range node.Statements {
-		node.Statements[i], _ = Modify(stmt, modifier).(Statement)
-	}
-}
-
-func modifyFunctionLiteral(node *FunctionLiteral, modifier ModifierFunc) {
-	for i, ident := range node.Parameters {
-		node.Parameters[i], _ = Modify(ident, modifier).(*Identifier)
-	}
-	node.Body, _ = Modify(node.Body, modifier).(*BlockStatement)
-}
-
-func modifyArrayLiteral(node *ArrayLiteral, modifier ModifierFunc) {
-	for i, elem := range node.Elements {
-		node.Elements[i], _ = Modify(elem, modifier).(Expression)
-	}
-}
-
-func modifyHashLiteral(node *HashLiteral, modifier ModifierFunc) {
-	pairs := make(map[Expression]Expression)
-	for key, value := range node.Pairs {
-		key, _ = Modify(key, modifier).(Expression)
-		value, _ = Modify(value, modifier).(Expression)
-
-		pairs[key] = value
-	}
-	node.Pairs = pairs
-}
-
-func modifyPrefixExpression(node *PrefixExpression, modifier ModifierFunc) {
-	node.Right, _ = Modify(node.Right, modifier).(Expression)
-}
-
-func modifyInfixExpression(node *InfixExpression, modifier ModifierFunc) {
-	node.Left, _ = Modify(node.Left, modifier).(Expression)
-	node.Right, _ = Modify(node.Right, modifier).(Expression)
-}
-
-func modifyIfExpression(node *IfExpression, modifier ModifierFunc) {
-	node.Condition, _ = Modify(node.Condition, modifier).(Expression)
-	node.Consequence, _ = Modify(node.Consequence, modifier).(*BlockStatement)
-	if node.Alternative != nil {
-		node.Alternative, _ = Modify(node.Alternative, modifier).(*BlockStatement)
-	}
-}
-
-func modifyCallExpression(node *CallExpression, modifier ModifierFunc) {
-	node.Function, _ = Modify(node.Function, modifier).(Expression)
-	for i, arg := range node.Arguments {
-		node.Arguments[i], _ = Modify(arg, modifier).(Expression)
-	}
-}
-
-func modifyIndexExpression(node *IndexExpression, modifier ModifierFunc) {
-	node.Struct, _ = Modify(node.Struct, modifier).(Expression)
-	node.Index, _ = Modify(node.Index, modifier).(Expression)
 }

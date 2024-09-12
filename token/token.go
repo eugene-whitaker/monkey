@@ -1,7 +1,7 @@
 package token
 
 const (
-	ILLEGAL = "ILLEGAL"
+	ILLEGAL = "\x00"
 	EOF     = ""
 
 	// Identifiers + literals
@@ -43,6 +43,7 @@ const (
 	IF       = "IF"
 	ELSE     = "ELSE"
 	RETURN   = "RETURN"
+	MACRO    = "MACRO"
 )
 
 type TokenType string
@@ -62,6 +63,7 @@ var keywords = map[string]TokenType{
 	"if":     IF,
 	"else":   ELSE,
 	"return": RETURN,
+	"macro":  MACRO,
 }
 
 func LookupKeyword(ident string) TokenType {

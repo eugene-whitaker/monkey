@@ -431,7 +431,7 @@ func evalIfExpression(node *ast.IfExpression, env *object.Environment) object.Ob
 }
 
 func evalCallExpression(node *ast.CallExpression, env *object.Environment) object.Object {
-	if node.Function.TokenLexeme() == "quote" {
+	if node.Function.TokenLexeme() == "quote" && len(node.Arguments) == 1 {
 		return toQuoteObject(node.Arguments[0], env)
 	}
 
@@ -466,8 +466,8 @@ func evalCallExpression(node *ast.CallExpression, env *object.Environment) objec
 func evalFunctionCallExpression(fn *object.Function, args []object.Object) object.Object {
 	enclosed := object.NewEnclosedEnvironment(fn.Env)
 
-	for i, parameter := range fn.Parameters {
-		enclosed.Set(parameter.Value, args[i])
+	for i, param := range fn.Parameters {
+		enclosed.Set(param.Value, args[i])
 	}
 
 	result := Eval(fn.Body, enclosed)
@@ -486,11 +486,7 @@ func evalUnquoteCallExpression(node ast.Node, env *object.Environment) ast.Node 
 			return node
 		}
 
-		if callExpr.Function.TokenLexeme() != "unquote" {
-			return node
-		}
-
-		if len(callExpr.Arguments) != 1 {
+		if callExpr.Function.TokenLexeme() != "unquote" || len(callExpr.Arguments) != 1 {
 			return node
 		}
 
@@ -606,6 +602,68 @@ func toASTNode(obj object.Object) ast.Node {
 			},
 			Value: obj.Value,
 		}
+	case *object.Boolean:
+		var ttype token.TokenType
+		if obj.Value {
+			ttype = token.TRUE
+		} else {
+			ttype = token.FALSE
+		}
+		return &ast.BooleanLiteral{
+			Token: token.Token{
+				Type:   ttype,
+				Lexeme: fmt.Sprintf("%t", obj.Value),
+			},
+			Value: obj.Value,
+		}
+	case *object.Function:
+		return &ast.FunctionLiteral{
+			Token: token.Token{
+				Type:   token.FUNCTION,
+				Lexeme: "fn",
+			},
+			Parameters: obj.Parameters,
+			Body:       obj.Body,
+		}
+	case *object.String:
+		return &ast.StringLiteral{
+			Token: token.Token{
+				Type:   token.STRING,
+				Lexeme: obj.Value,
+			},
+			Value: obj.Value,
+		}
+	case *object.Array:
+		elems := []ast.Expression{}
+		for _, o := range obj.Elements {
+			elem, _ := toASTNode(o).(ast.Expression)
+
+			elems = append(elems, elem)
+		}
+		return &ast.ArrayLiteral{
+			Token: token.Token{
+				Type:   token.LBRACKET,
+				Lexeme: "[",
+			},
+			Elements: elems,
+		}
+	case *object.Hash:
+		pairs := make(map[ast.Expression]ast.Expression)
+		for _, pair := range obj.Pairs {
+			key, _ := toASTNode(pair.Key).(ast.Expression)
+			value, _ := toASTNode(pair.Value).(ast.Expression)
+
+			pairs[key] = value
+		}
+		return &ast.HashLiteral{
+			Token: token.Token{
+				Type:   token.LBRACE,
+				Lexeme: "{",
+			},
+			Pairs: pairs,
+		}
+	case *object.Quote:
+		return obj.Node
 	default:
 		return nil
 	}

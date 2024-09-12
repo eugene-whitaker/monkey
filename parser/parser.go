@@ -79,6 +79,7 @@ func NewParser(l *lexer.Lexer) *Parser {
 		token.STRING:   p.parseStringLiteral,
 		token.LBRACKET: p.parseArrayLiteral,
 		token.LBRACE:   p.parseHashLiteral,
+		token.MACRO:    p.parseMacroExpression,
 	}
 
 	p.infixFuncs = map[token.TokenType]infixFunc{
@@ -223,20 +224,20 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 		p.error(p.tok, fmt.Sprintf("no prefix parse function for <%s>", p.tok.Type))
 		return nil
 	}
-	leftExp := prefix()
+	leftExpr := prefix()
 
 	for precedence < p.precedence(p.peek().Type) {
 		infix := p.infixFuncs[p.peek().Type]
 		if infix == nil {
-			return leftExp
+			return leftExpr
 		}
 
 		p.advance()
 
-		leftExp = infix(leftExp)
+		leftExpr = infix(leftExpr)
 	}
 
-	return leftExp
+	return leftExpr
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
@@ -282,7 +283,38 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 		return nil
 	}
 
-	lit.Parameters = p.parseFunctionParameters()
+	idents := []*ast.Identifier{}
+
+	p.advance()
+
+	if p.tok.Type != token.RPAREN {
+		idents = append(
+			idents,
+			&ast.Identifier{
+				Token: p.tok,
+				Value: p.tok.Lexeme,
+			},
+		)
+
+		for p.check(token.COMMA) {
+			p.advance()
+			p.advance()
+
+			idents = append(
+				idents,
+				&ast.Identifier{
+					Token: p.tok,
+					Value: p.tok.Lexeme,
+				},
+			)
+		}
+
+		if !p.expect(token.RPAREN, "expected <)> token following function parameters") {
+			return nil
+		}
+	}
+
+	lit.Parameters = idents
 
 	if !p.expect(token.LBRACE, "expected <{> token following <)>") {
 		return nil
@@ -307,7 +339,26 @@ func (p *Parser) parseArrayLiteral() ast.Expression {
 		Token: p.tok,
 	}
 
-	lit.Elements = p.parseArrayElements()
+	elems := []ast.Expression{}
+
+	p.advance()
+
+	if p.tok.Type != token.RBRACKET {
+		elems = append(elems, p.parseExpression(LOWEST))
+
+		for p.check(token.COMMA) {
+			p.advance()
+			p.advance()
+
+			elems = append(elems, p.parseExpression(LOWEST))
+		}
+
+		if !p.expect(token.RBRACKET, "expected <]> token following array elements") {
+			return nil
+		}
+	}
+
+	lit.Elements = elems
 
 	return lit
 
@@ -319,233 +370,11 @@ func (p *Parser) parseHashLiteral() ast.Expression {
 		Token: p.tok,
 	}
 
-	lit.Pairs = p.parseHashPairs()
-
-	return lit
-
-}
-
-func (p *Parser) parsePrefixExpression() ast.Expression {
-	// defer untrace(trace("parsePrefixExpression"))
-	exp := &ast.PrefixExpression{
-		Token:    p.tok,
-		Operator: p.tok.Lexeme,
-	}
-
-	p.advance()
-
-	exp.Right = p.parseExpression(PREFIX)
-
-	return exp
-}
-
-func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
-	// defer untrace(trace("parseInfixExpression"))
-	exp := &ast.InfixExpression{
-		Token:    p.tok,
-		Operator: p.tok.Lexeme,
-		Left:     left,
-	}
-
-	precedence := p.precedence(p.tok.Type)
-	p.advance()
-	exp.Right = p.parseExpression(precedence)
-	//                            ^^^ decrement here for right-associativity
-
-	return exp
-}
-
-func (p *Parser) parseIfExpression() ast.Expression {
-	// defer untrace(trace("parseIfExpression"))
-	exp := &ast.IfExpression{
-		Token: p.tok,
-	}
-
-	if !p.expect(token.LPAREN, "expected <(> token following <if>") {
-		return nil
-	}
-
-	p.advance()
-
-	exp.Condition = p.parseExpression(LOWEST)
-
-	if !p.expect(token.RPAREN, "expected <)> token following if condition") {
-		return nil
-	}
-
-	if !p.expect(token.LBRACE, "expected '{' token following ')'") {
-		return nil
-	}
-
-	exp.Consequence = p.parseBlockStatement()
-	if p.check(token.ELSE) {
-		p.advance()
-
-		if !p.expect(token.LBRACE, "expected <{> token following <else>") {
-			return nil
-		}
-
-		exp.Alternative = p.parseBlockStatement()
-	}
-
-	return exp
-}
-
-func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
-	// defer untrace(trace("parseCallExpression"))
-	exp := &ast.CallExpression{
-		Token:    p.tok,
-		Function: left,
-	}
-
-	exp.Arguments = p.parseCallArguments()
-	return exp
-
-}
-
-func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
-	// defer untrace(trace("parseIndexExpression"))
-	exp := &ast.IndexExpression{
-		Token:  p.tok,
-		Struct: left,
-	}
-
-	p.advance()
-
-	exp.Index = p.parseExpression(LOWEST)
-
-	if !p.expect(token.RBRACKET, "expected <]> token following <INT>") {
-		return nil
-	}
-
-	return exp
-}
-
-func (p *Parser) parseGroupedExpression() ast.Expression {
-	// defer untrace(trace("parseGroupedExpression"))
-	p.advance()
-
-	exp := p.parseExpression(LOWEST)
-
-	if !p.expect(token.RPAREN, "expected <)> token following grouped expression") {
-		return nil
-	}
-
-	return exp
-}
-
-func (p *Parser) parseFunctionParameters() []*ast.Identifier {
-	// defer untrace(trace("parseFunctionParameters"))
-	idents := []*ast.Identifier{}
-
-	p.advance()
-	if p.tok.Type == token.RPAREN {
-		return idents
-	}
-
-	idents = append(
-		idents,
-		&ast.Identifier{
-			Token: p.tok,
-			Value: p.tok.Lexeme,
-		},
-	)
-
-	for p.check(token.COMMA) {
-		p.advance()
-		p.advance()
-
-		idents = append(
-			idents,
-			&ast.Identifier{
-				Token: p.tok,
-				Value: p.tok.Lexeme,
-			},
-		)
-	}
-
-	if !p.expect(token.RPAREN, "expected <)> token following function parameters") {
-		return nil
-	}
-
-	return idents
-}
-
-func (p *Parser) parseCallArguments() []ast.Expression {
-	// defer untrace(trace("parseCallArguments"))
-	args := []ast.Expression{}
-
-	p.advance()
-	if p.tok.Type == token.RPAREN {
-		return args
-	}
-
-	args = append(args, p.parseExpression(LOWEST))
-
-	for p.check(token.COMMA) {
-		p.advance()
-		p.advance()
-
-		args = append(args, p.parseExpression(LOWEST))
-	}
-
-	if !p.expect(token.RPAREN, "expected <)> token following call arguments") {
-		return nil
-	}
-
-	return args
-}
-
-func (p *Parser) parseArrayElements() []ast.Expression {
-	// defer untrace(trace("parseArrayElements"))
-	elems := []ast.Expression{}
-
-	p.advance()
-	if p.tok.Type == token.RBRACKET {
-		return elems
-	}
-
-	elems = append(elems, p.parseExpression(LOWEST))
-
-	for p.check(token.COMMA) {
-		p.advance()
-		p.advance()
-
-		elems = append(elems, p.parseExpression(LOWEST))
-	}
-
-	if !p.expect(token.RBRACKET, "expected <]> token following array elements") {
-		return nil
-	}
-
-	return elems
-}
-
-func (p *Parser) parseHashPairs() map[ast.Expression]ast.Expression {
-	// defer untrace(trace("parseHashPairs"))
 	pairs := make(map[ast.Expression]ast.Expression)
 
 	p.advance()
-	if p.tok.Type == token.RBRACE {
-		return pairs
-	}
 
-	key := p.parseExpression(LOWEST)
-
-	if !p.expect(token.COLON, "expected <:> token following hash key") {
-		return nil
-	}
-
-	p.advance()
-
-	value := p.parseExpression(LOWEST)
-
-	pairs[key] = value
-
-	for p.check(token.COMMA) {
-		p.advance()
-		p.advance()
-
+	if p.tok.Type != token.RBRACE {
 		key := p.parseExpression(LOWEST)
 
 		if !p.expect(token.COLON, "expected <:> token following hash key") {
@@ -557,13 +386,213 @@ func (p *Parser) parseHashPairs() map[ast.Expression]ast.Expression {
 		value := p.parseExpression(LOWEST)
 
 		pairs[key] = value
+
+		for p.check(token.COMMA) {
+			p.advance()
+			p.advance()
+
+			key := p.parseExpression(LOWEST)
+
+			if !p.expect(token.COLON, "expected <:> token following hash key") {
+				return nil
+			}
+
+			p.advance()
+
+			value := p.parseExpression(LOWEST)
+
+			pairs[key] = value
+		}
+
+		if !p.expect(token.RBRACE, "expected <}> token following hash pairs") {
+			return nil
+		}
 	}
 
-	if !p.expect(token.RBRACE, "expected <}> token following hash pairs") {
+	lit.Pairs = pairs
+
+	return lit
+
+}
+
+func (p *Parser) parsePrefixExpression() ast.Expression {
+	// defer untrace(trace("parsePrefixExpression"))
+	expr := &ast.PrefixExpression{
+		Token:    p.tok,
+		Operator: p.tok.Lexeme,
+	}
+
+	p.advance()
+
+	expr.Right = p.parseExpression(PREFIX)
+
+	return expr
+}
+
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	// defer untrace(trace("parseInfixExpression"))
+	expr := &ast.InfixExpression{
+		Token:    p.tok,
+		Operator: p.tok.Lexeme,
+		Left:     left,
+	}
+
+	precedence := p.precedence(p.tok.Type)
+	p.advance()
+	expr.Right = p.parseExpression(precedence)
+	//                             ^^^ decrement here for right-associativity
+
+	return expr
+}
+
+func (p *Parser) parseIfExpression() ast.Expression {
+	// defer untrace(trace("parseIfExpression"))
+	expr := &ast.IfExpression{
+		Token: p.tok,
+	}
+
+	if !p.expect(token.LPAREN, "expected <(> token following <if>") {
 		return nil
 	}
 
-	return pairs
+	p.advance()
+
+	expr.Condition = p.parseExpression(LOWEST)
+
+	if !p.expect(token.RPAREN, "expected <)> token following if condition") {
+		return nil
+	}
+
+	if !p.expect(token.LBRACE, "expected '{' token following ')'") {
+		return nil
+	}
+
+	expr.Consequence = p.parseBlockStatement()
+	if p.check(token.ELSE) {
+		p.advance()
+
+		if !p.expect(token.LBRACE, "expected <{> token following <else>") {
+			return nil
+		}
+
+		expr.Alternative = p.parseBlockStatement()
+	}
+
+	return expr
+}
+
+func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
+	// defer untrace(trace("parseCallExpression"))
+	expr := &ast.CallExpression{
+		Token:    p.tok,
+		Function: left,
+	}
+
+	args := []ast.Expression{}
+
+	p.advance()
+	if p.tok.Type != token.RPAREN {
+		args = append(args, p.parseExpression(LOWEST))
+
+		for p.check(token.COMMA) {
+			p.advance()
+			p.advance()
+
+			args = append(args, p.parseExpression(LOWEST))
+		}
+
+		if !p.expect(token.RPAREN, "expected <)> token following call arguments") {
+			return nil
+		}
+	}
+
+	expr.Arguments = args
+
+	return expr
+
+}
+
+func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
+	// defer untrace(trace("parseIndexExpression"))
+	expr := &ast.IndexExpression{
+		Token:  p.tok,
+		Struct: left,
+	}
+
+	p.advance()
+
+	expr.Index = p.parseExpression(LOWEST)
+
+	if !p.expect(token.RBRACKET, "expected <]> token following <INT>") {
+		return nil
+	}
+
+	return expr
+}
+
+func (p *Parser) parseMacroExpression() ast.Expression {
+	// defer untrace(trace("parseMacroExpression"))
+	lit := &ast.MacroExpression{
+		Token: p.tok,
+	}
+
+	if !p.expect(token.LPAREN, "expected <(> token following <fn>") {
+		return nil
+	}
+
+	idents := []*ast.Identifier{}
+
+	p.advance()
+
+	if p.tok.Type != token.RPAREN {
+		idents = append(
+			idents,
+			&ast.Identifier{
+				Token: p.tok,
+				Value: p.tok.Lexeme,
+			},
+		)
+
+		for p.check(token.COMMA) {
+			p.advance()
+			p.advance()
+
+			idents = append(
+				idents,
+				&ast.Identifier{
+					Token: p.tok,
+					Value: p.tok.Lexeme,
+				},
+			)
+		}
+
+		if !p.expect(token.RPAREN, "expected <)> token following function parameters") {
+			return nil
+		}
+	}
+
+	lit.Parameters = idents
+
+	if !p.expect(token.LBRACE, "expected <{> token following <)>") {
+		return nil
+	}
+
+	lit.Body = p.parseBlockStatement()
+
+	return lit
+}
+
+func (p *Parser) parseGroupedExpression() ast.Expression {
+	// defer untrace(trace("parseGroupedExpression"))
+	p.advance()
+
+	expr := p.parseExpression(LOWEST)
+
+	if !p.expect(token.RPAREN, "expected <)> token following grouped expression") {
+		return nil
+	}
+
+	return expr
 }
 
 func (p *Parser) advance() {
