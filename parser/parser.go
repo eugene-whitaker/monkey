@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/eugene-whitaker/monkey/ast"
-	"github.com/eugene-whitaker/monkey/lexer"
-	"github.com/eugene-whitaker/monkey/token"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/ast"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/lexer"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/token"
 )
 
 const (
@@ -103,7 +103,7 @@ func NewParser(l *lexer.Lexer) *Parser {
 }
 
 func (p *Parser) ParseProgram() *ast.Program {
-	// defer untrace(trace("ParseProgram"))
+	defer untrace(trace("ParseProgram"))
 	program := &ast.Program{
 		Statements: []ast.Statement{},
 	}
@@ -126,7 +126,7 @@ func (p *Parser) Errors() []string {
 }
 
 func (p *Parser) parseStatement() ast.Statement {
-	// defer untrace(trace("parseStatement"))
+	defer untrace(trace("parseStatement"))
 	switch p.tok.Type {
 	case token.LET:
 		return p.parseLetStatement()
@@ -138,7 +138,7 @@ func (p *Parser) parseStatement() ast.Statement {
 }
 
 func (p *Parser) parseLetStatement() *ast.LetStatement {
-	// defer untrace(trace("parseLetStatement"))
+	defer untrace(trace("parseLetStatement"))
 	stmt := &ast.LetStatement{
 		Token: p.tok,
 	}
@@ -168,7 +168,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 }
 
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
-	// defer untrace(trace("parseReturnStatement"))
+	defer untrace(trace("parseReturnStatement"))
 	stmt := &ast.ReturnStatement{
 		Token: p.tok,
 	}
@@ -185,7 +185,7 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 }
 
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
-	// defer untrace(trace("parseExpressionStatement"))
+	defer untrace(trace("parseExpressionStatement"))
 	stmt := &ast.ExpressionStatement{
 		Token: p.tok,
 	}
@@ -200,7 +200,7 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 }
 
 func (p *Parser) parseBlockStatement() *ast.BlockStatement {
-	// defer untrace(trace("parseBlockStatement"))
+	defer untrace(trace("parseBlockStatement"))
 	block := &ast.BlockStatement{
 		Token:      p.tok,
 		Statements: []ast.Statement{},
@@ -220,7 +220,7 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 }
 
 func (p *Parser) parseExpression(precedence int) ast.Expression {
-	// defer untrace(trace("parseExpression"))
+	defer untrace(trace("parseExpression"))
 	prefix := p.prefixFuncs[p.tok.Type]
 	if prefix == nil {
 		p.error(p.tok, fmt.Sprintf("no prefix parse function for <%s>", p.tok.Type))
@@ -243,7 +243,7 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 }
 
 func (p *Parser) parseIdentifier() ast.Expression {
-	// defer untrace(trace("parseIdentifier"))
+	defer untrace(trace("parseIdentifier"))
 	return &ast.Identifier{
 		Token: p.tok,
 		Value: p.tok.Lexeme,
@@ -251,7 +251,7 @@ func (p *Parser) parseIdentifier() ast.Expression {
 }
 
 func (p *Parser) parseIntegerLiteral() ast.Expression {
-	// defer untrace(trace("parseIntegerLiteral"))
+	defer untrace(trace("parseIntegerLiteral"))
 	lit := &ast.IntegerLiteral{
 		Token: p.tok,
 	}
@@ -268,7 +268,7 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 }
 
 func (p *Parser) parseBooleanLiteral() ast.Expression {
-	// defer untrace(trace("parseBooleanLiteral"))
+	defer untrace(trace("parseBooleanLiteral"))
 	return &ast.BooleanLiteral{
 		Token: p.tok,
 		Value: p.tok.Type == token.TRUE,
@@ -276,7 +276,7 @@ func (p *Parser) parseBooleanLiteral() ast.Expression {
 }
 
 func (p *Parser) parseFunctionLiteral() ast.Expression {
-	// defer untrace(trace("parseFunctionLiteral"))
+	defer untrace(trace("parseFunctionLiteral"))
 	lit := &ast.FunctionLiteral{
 		Token: p.tok,
 	}
@@ -328,7 +328,7 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 }
 
 func (p *Parser) parseStringLiteral() ast.Expression {
-	// defer untrace(trace("parseStringLiteral"))
+	defer untrace(trace("parseStringLiteral"))
 	return &ast.StringLiteral{
 		Token: p.tok,
 		Value: p.tok.Lexeme,
@@ -336,7 +336,7 @@ func (p *Parser) parseStringLiteral() ast.Expression {
 }
 
 func (p *Parser) parseArrayLiteral() ast.Expression {
-	// defer untrace(trace("parseArrayLiteral"))
+	defer untrace(trace("parseArrayLiteral"))
 	lit := &ast.ArrayLiteral{
 		Token: p.tok,
 	}
@@ -367,7 +367,7 @@ func (p *Parser) parseArrayLiteral() ast.Expression {
 }
 
 func (p *Parser) parseHashLiteral() ast.Expression {
-	// defer untrace(trace("parseArrayLiteral"))
+	defer untrace(trace("parseArrayLiteral"))
 	lit := &ast.HashLiteral{
 		Token: p.tok,
 	}
@@ -418,7 +418,7 @@ func (p *Parser) parseHashLiteral() ast.Expression {
 }
 
 func (p *Parser) parsePrefixExpression() ast.Expression {
-	// defer untrace(trace("parsePrefixExpression"))
+	defer untrace(trace("parsePrefixExpression"))
 	expr := &ast.PrefixExpression{
 		Token:    p.tok,
 		Operator: p.tok.Lexeme,
@@ -448,7 +448,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 }
 
 func (p *Parser) parseIfExpression() ast.Expression {
-	// defer untrace(trace("parseIfExpression"))
+	defer untrace(trace("parseIfExpression"))
 	expr := &ast.IfExpression{
 		Token: p.tok,
 	}
@@ -484,7 +484,7 @@ func (p *Parser) parseIfExpression() ast.Expression {
 }
 
 func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
-	// defer untrace(trace("parseCallExpression"))
+	defer untrace(trace("parseCallExpression"))
 	expr := &ast.CallExpression{
 		Token:    p.tok,
 		Function: left,
@@ -515,7 +515,7 @@ func (p *Parser) parseCallExpression(left ast.Expression) ast.Expression {
 }
 
 func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
-	// defer untrace(trace("parseIndexExpression"))
+	defer untrace(trace("parseIndexExpression"))
 	expr := &ast.IndexExpression{
 		Token:  p.tok,
 		Struct: left,
@@ -533,7 +533,7 @@ func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
 }
 
 func (p *Parser) parseMacroExpression() ast.Expression {
-	// defer untrace(trace("parseMacroExpression"))
+	defer untrace(trace("parseMacroExpression"))
 	lit := &ast.MacroExpression{
 		Token: p.tok,
 	}
@@ -585,7 +585,7 @@ func (p *Parser) parseMacroExpression() ast.Expression {
 }
 
 func (p *Parser) parseGroupedExpression() ast.Expression {
-	// defer untrace(trace("parseGroupedExpression"))
+	defer untrace(trace("parseGroupedExpression"))
 	p.advance()
 
 	expr := p.parseExpression(LOWEST)

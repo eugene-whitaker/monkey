@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/eugene-whitaker/monkey/ast"
-	"github.com/eugene-whitaker/monkey/lexer"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/ast"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/lexer"
 )
 
 type StatementTest interface {

@@ -6,10 +6,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/eugene-whitaker/monkey/evaluator"
-	"github.com/eugene-whitaker/monkey/lexer"
-	"github.com/eugene-whitaker/monkey/object"
-	"github.com/eugene-whitaker/monkey/parser"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/evaluator"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/lexer"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/object"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/parser"
 )
 
 const MONKEY_FACE = `

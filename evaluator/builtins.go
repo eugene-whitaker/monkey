@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/eugene-whitaker/monkey/object"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/object"
 )
 
 var builtins = map[string]*object.Builtin{

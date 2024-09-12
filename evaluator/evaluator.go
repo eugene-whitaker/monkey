@@ -3,9 +3,9 @@ package evaluator
 import (
 	"fmt"
 
-	"github.com/eugene-whitaker/monkey/ast"
-	"github.com/eugene-whitaker/monkey/object"
-	"github.com/eugene-whitaker/monkey/token"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/ast"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/object"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/token"
 )
 
 var (
