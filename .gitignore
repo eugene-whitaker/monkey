@@ -24,4 +24,5 @@ go.work.sum
 # env file
 .env
 
+# Executable binary, built with `go build -o monkey`
 monkey

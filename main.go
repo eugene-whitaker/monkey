@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/eugene-whitaker/monkey/repl"
+	"github.com/eugene-whitaker/writing-an-interpreter-in-go/repl"
 )
 
 func main() {
